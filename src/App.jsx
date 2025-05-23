@@ -8,13 +8,17 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./components/NotFound";
 
 const App = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    localStorage.getItem("isAuthenticated") === "true"
+  );
 
   const login = () => {
+    localStorage.setItem("isAuthenticated", "true");
     setIsAuthenticated(true);
   };
 
   const logout = () => {
+    localStorage.removeItem("isAuthenticated");
     setIsAuthenticated(true);
   };
   return (

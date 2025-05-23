@@ -59,6 +59,7 @@ const Login = ({ login }) => {
       );
       if (res) {
         login(email, password);
+        localStorage.setItem("isAuthenticated","true")
         toast.success("Logged in successfully!");
         navigate("/upload", { replace: true });
         setEmail("");

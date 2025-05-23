@@ -96,6 +96,7 @@ const Upload = ({ logout }) => {
       );
       if (res.status === 200) {
         logout();
+        localStorage.removeItem("isAuthenticated");
         navigate("/");
       }
     } catch (error) {
