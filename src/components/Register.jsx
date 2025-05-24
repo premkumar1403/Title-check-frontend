@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
@@ -15,8 +15,9 @@ const Register = () => {
     email: "",
     password: "",
   });
-
-  const usernameRegex = /^[A-Za-z\d]{3,20}$/;
+  const navigate = useNavigate();
+  
+  const usernameRegex = /^(?! )[A-Za-z\d]+(?: [A-Za-z\d]+)*(?<! )$/;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
 
@@ -74,6 +75,9 @@ const handleSubmit = async (e) => {
 
     if (res) {
       toast.success("Account created successfully!");
+      setTimeout(() => {
+        navigate("/");
+      },3000);
       // Clear form
       setUsername("");
       setEmail("");
