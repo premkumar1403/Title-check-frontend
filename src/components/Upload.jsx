@@ -4,7 +4,7 @@ import * as XLSX from "xlsx";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
-import {Tooltip} from "react-tooltip";
+import { Tooltip } from "react-tooltip";
 
 let cancelTokenSource = null;
 
@@ -175,7 +175,6 @@ const Upload = ({ logout }) => {
     if (!query) return text;
     const regex = new RegExp(`(${query})`, "gi");
     const parts = text.split(regex);
-
     return parts.map((part, idx) =>
       regex.test(part) ? (
         <mark key={idx} className="bg-yellow-300 text-black px-1 rounded">
@@ -201,9 +200,9 @@ const Upload = ({ logout }) => {
       </div>
 
       {/* Main content */}
-      <div className="p-6 flex gap-6">
+      <div className="p-6 flex gap-x-6 flex-wrap">
         {/* Upload Box */}
-        <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center h-2/5">
+        <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center h-2/5 w-[23%]">
           {isUploading ? (
             <div className="flex flex-col items-center gap-4 text-blue-600">
               <Loader className="animate-spin" size={32} />
@@ -290,12 +289,24 @@ const Upload = ({ logout }) => {
                 <strong>Decision_With_Comments</strong>.<br />
                 Fill them accordingly before uploading.
               </Tooltip>
+
+              <div>
+                <strong>
+                  Note : <ul className="flex flex-col items-start">
+                    <li>Handlers should upload only XLSX or XLS files.</li>
+                    <li>Handlers should follow the template format given below: </li>
+                    <li>Ex: Title, Author_Mail, Conference_Name, Decision_With_Comments</li>
+                    <li>The Excel sheet should have only one sheet.</li>
+                    <li>All the fields should be filled with necessary details without null values.</li>
+                  </ul>
+                </strong>
+              </div>
             </>
           )}
         </div>
 
         {/* Table Section */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 overflow-x-auto w-9/12">
+        <div className="bg-white rounded-2xl shadow-lg p-6 xl:w-9/12">
           <input
             type="text"
             placeholder="Search by Title or Conference Name"
