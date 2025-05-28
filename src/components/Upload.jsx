@@ -5,6 +5,9 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { Tooltip } from "react-tooltip";
+import { MdNavigateNext } from "react-icons/md";
+import { GrFormPrevious } from "react-icons/gr";
+
 
 let cancelTokenSource = null;
 
@@ -61,35 +64,35 @@ const Upload = ({ logout }) => {
     const formData = new FormData();
     formData.append("file", file);
 
-    try {
-      setIsUploading(true);
-      setUploadingMessage("Uploading...");
-      cancelTokenSource = axios.CancelToken.source();
+    // try {
+    //   setIsUploading(true);
+    //   setUploadingMessage("Uploading...");
+    //   cancelTokenSource = axios.CancelToken.source();
 
-      await axios.post(
-        `${import.meta.env.VITE_REACT_APP_URI}/api/v1/file/file-upload`,
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-          cancelToken: cancelTokenSource.token,
-        }
-      );
+    //   await axios.post(
+    //     `${import.meta.env.VITE_REACT_APP_URI}/api/v1/file/file-upload`,
+    //     formData,
+    //     {
+    //       headers: { "Content-Type": "multipart/form-data" },
+    //       cancelToken: cancelTokenSource.token,
+    //     }
+    //   );
 
-      toast.success("File uploaded successfully!");
-      setUploadingMessage("Processing uploaded data...");
-      await fetchData();
-    } catch (err) {
-      if (axios.isCancel(err)) {
-        toast.warn("Upload cancelled.");
-      } else {
-        console.error("Upload failed:", err);
-        toast.error("Upload failed. Please try again.");
-      }
-    } finally {
-      setIsUploading(false);
-      setUploadingMessage("");
-      cancelTokenSource = null;
-    }
+    //   toast.success("File uploaded successfully!");
+    //   setUploadingMessage("Processing uploaded data...");
+    //   await fetchData();
+    // } catch (err) {
+    //   if (axios.isCancel(err)) {
+    //     toast.warn("Upload cancelled.");
+    //   } else {
+    //     console.error("Upload failed:", err);
+    //     toast.error("Upload failed. Please try again.");
+    //   }
+    // } finally {
+    //   setIsUploading(false);
+    //   setUploadingMessage("");
+    //   cancelTokenSource = null;
+    // }
   };
 
   const handleCancelUpload = () => {
@@ -122,7 +125,7 @@ const Upload = ({ logout }) => {
       setIsUploading(true);
       setUploadingMessage("Uploading...");
       cancelTokenSource = axios.CancelToken.source();
-
+      
       await axios.post(
         `${import.meta.env.VITE_REACT_APP_URI}/api/v1/file/file-upload`,
         formData,
@@ -200,9 +203,9 @@ const Upload = ({ logout }) => {
       </div>
 
       {/* Main content */}
-      <div className="p-6 flex gap-x-6 flex-wrap">
+      <div className="p-6 flex flex-col lg:flex-row lg:items-start xl:flex-row xl:items-start gap-6 ">
         {/* Upload Box */}
-        <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center h-2/5 w-[23%]">
+  <div className="w-full sm:w-[90%] md:w-[80%] lg:w-[33%] xl:w-[28%] 2xl:w-[26%] mx-auto lg:mx-0 border-2 border-dashed border-gray-300 rounded-xl p-5 sm:p-6 text-center shadow-md bg-white">
           {isUploading ? (
             <div className="flex flex-col items-center gap-4 text-blue-600">
               <Loader className="animate-spin" size={32} />
@@ -270,7 +273,7 @@ const Upload = ({ logout }) => {
                 ⬇ Download Excel Template
               </button>
 
-              <span
+              {/* <span
                 data-tooltip-id="templateInfo"
                 className="ml-2 cursor-pointer text-gray-500"
               >
@@ -288,25 +291,25 @@ const Upload = ({ logout }) => {
                 <strong>Conference_Name</strong>, and{" "}
                 <strong>Decision_With_Comments</strong>.<br />
                 Fill them accordingly before uploading.
-              </Tooltip>
+              </Tooltip> */}
 
               <div>
-                <strong>
-                  Note : <ul className="flex flex-col items-start">
+                <div className="text-left mt-4">
+                  <p className="font-bold text-amber-600">Note:</p> 
+                  <ul className="flex flex-col items-start list-disc">
                     <li>Handlers should upload only XLSX or XLS files.</li>
                     <li>Handlers should follow the template format given below: </li>
-                    <li>Ex: Title, Author_Mail, Conference_Name, Decision_With_Comments</li>
-                    <li>The Excel sheet should have only one sheet.</li>
+                    <li>Ex: Title, Author_Mail, Conference_Name, Decision_With_Commends</li>
                     <li>All the fields should be filled with necessary details without null values.</li>
                   </ul>
-                </strong>
+                </div>
               </div>
             </>
           )}
         </div>
 
         {/* Table Section */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 xl:w-9/12">
+  <div className="w-full lg:w-[67%] xl:w-[72%] 2xl:w-[74%] bg-white rounded-2xl shadow-lg p-5 sm:p-6">
           <input
             type="text"
             placeholder="Search by Title or Conference Name"
@@ -314,77 +317,93 @@ const Upload = ({ logout }) => {
             onChange={(e) => setQuery(e.target.value)}
             className="border px-4 py-2 rounded w-full mb-4"
           />
-          <table className="min-w-full text-sm border border-gray-200">
-            <thead>
-              <tr className="bg-gray-200">
-                <th className="py-2 px-4 text-left">Title</th>
-                <th className="py-2 px-4 text-left">Conference</th>
-                <th className="py-2 px-4 text-left">Decision_With_Comments</th>
-              </tr>
-            </thead>
-            <tbody>
-              {files.length === 0 ? (
-                <tr>
-                  <td colSpan="3" className="text-center py-6 text-gray-500">
-                    No matching records found.
+<div className="overflow-x-auto shadow-xl rounded-xl border border-gray-200">
+  <table className="min-w-full divide-y divide-gray-200 text-sm text-left">
+    <thead className="bg-gradient-to-r from-indigo-100 to-purple-100 sticky top-0 z-10 text-gray-700">
+      <tr>
+        <th className="py-3 px-5 font-semibold">Title</th>
+        <th className="py-3 px-5 font-semibold">Conference</th>
+        <th className="py-3 px-5 font-semibold">Decision With Commends</th>
+      </tr>
+    </thead>
+<tbody>
+  {files.length === 0 ? (
+    <tr>
+      <td colSpan="3" className="text-center py-6 text-gray-500">
+        No matching records found.
+      </td>
+    </tr>
+  ) : (
+    files.map((file, fileIndex) => (
+      <React.Fragment key={fileIndex}>
+        {file.Conference?.length > 0 ? (
+          file.Conference.map((conf, i) => {
+            const decision = conf.Decision_With_Commends?.toLowerCase() || "";
+            let decisionClass = "text-yellow-600 font-semibold";
+
+            if (decision.includes("accept")) decisionClass = "text-green-600 font-semibold";
+            else if (decision.includes("reject")) decisionClass = "text-red-600 font-semibold";
+            else if (decision.includes("revision")) decisionClass = "text-blue-600 font-semibold";
+
+            // Add bottom border only to the last row of the group
+            const isLastRow = i === file.Conference.length - 1;
+            const rowBorderClass = isLastRow ? "border-b-2 border-indigo-300" : "";
+
+            return (
+              <tr
+                key={i}
+                className={`hover:bg-indigo-50 transition duration-200 even:bg-white odd:bg-gray-50 ${rowBorderClass}`}
+              >
+                {i === 0 && (
+                  <td
+                    rowSpan={file.Conference.length}
+                    className="py-4 px-5 align-top font-medium border-r-2 border-r-indigo-300"
+                    title={file.Title}
+                  >
+                    {highlightMatch(file.Title, query)}
                   </td>
-                </tr>
-              ) : (
-                files.map((file, idx) => (
-                  <tr key={idx} className="border-b align-top">
-                    <td className="py-2 px-4">
-                      {highlightMatch(file.Title, query)}
-                    </td>
+                )}
+                <td className="py-3 px-5" title={conf.Conference_Name}>
+                  {conf.Conference_Name?.trim() || <i>Unnamed Conference</i>}
+                </td>
+                <td className={`py-3 px-5 ${decisionClass}`}>
+                  {conf.Decision_With_Commends?.trim() || <i>-</i>}
+                </td>
+              </tr>
+            );
+          })
+        ) : (
+          <tr className="hover:bg-indigo-50 transition duration-200 border-b-2 border-indigo-300">
+            <td className="py-4 px-5 font-medium border-r">
+              {highlightMatch(file.Title, query)}
+            </td>
+            <td className="py-3 px-5"><i>No Conference Data</i></td>
+            <td className="py-3 px-5 text-yellow-600 font-semibold"><i>-</i></td>
+          </tr>
+        )}
+      </React.Fragment>
+    ))
+  )}
+</tbody>
 
-                    {/* Display all Conference Names */}
-                    <td className="py-2 px-4">
-                      {file.Conference?.map((conf, i) => (
-                        <div key={i} className="mb-1">
-                          {conf.Conference_Name}
-                        </div>
-                      ))}
-                    </td>
+  </table>
+</div>
 
-                    {/* Display all Decisions with Color Coding */}
-                    <td className="py-2 px-4">
-                      {file.Conference?.map((conf, i) => {
-                        const decision =
-                          conf.Decision_With_Commends?.toLowerCase() || "";
-                        let decisionClass = "text-yellow-600 font-semibold";
 
-                        if (decision.includes("accept"))
-                          decisionClass = "text-green-600 font-semibold";
-                        else if (decision.includes("reject"))
-                          decisionClass = "text-red-600 font-semibold";
-                        else if (decision.includes("revision"))
-                          decisionClass = "text-blue-600 font-semibold";
-
-                        return (
-                          <div key={i} className={`mb-1 ${decisionClass}`}>
-                            {conf.Decision_With_Commends}
-                          </div>
-                        );
-                      })}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
 
           {/* Pagination */}
           <div className="flex justify-center items-center gap-4 mt-6 text-sm">
             <button
               onClick={() => setPage((p) => Math.max(p - 1, 1))}
               disabled={page === 1}
-              className={`px-4 py-2 rounded-full border cursor-pointer transition duration-200 font-medium 
+              className={`px-4 py-2 rounded-full border cursor-pointer transition duration-200 font-medium flex items-center gap-2
                 ${
                   page === 1
                     ? "bg-blue-100 text-blue-400 border-blue-200 cursor-not-allowed"
                     : "bg-blue-500 text-white hover:bg-blue-600 border-blue-500 shadow-md"
                 }`}
             >
-              ⬅ Prev
+              <GrFormPrevious className="text-xl" /> Prev
             </button>
 
             <span className="px-4 py-2 rounded-full bg-blue-100 text-blue-700 font-semibold shadow-sm">
@@ -394,14 +413,14 @@ const Upload = ({ logout }) => {
             <button
               onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
               disabled={page === totalPages}
-              className={`px-4 py-2 rounded-full border cursor-pointer transition duration-200 font-medium 
+              className={`px-4 py-2 rounded-full border cursor-pointer transition duration-200 font-medium flex items-center gap-2
                 ${
                   page === totalPages
                     ? "bg-blue-100 text-blue-400 border-blue-200 cursor-not-allowed"
                     : "bg-blue-500 text-white hover:bg-blue-600 border-blue-500 shadow-md"
                 }`}
             >
-              Next ➡
+              Next <MdNavigateNext className="text-xl" />
             </button>
           </div>
         </div>
