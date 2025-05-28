@@ -17,6 +17,7 @@ const Upload = ({ logout }) => {
   const [totalPages, setTotalPages] = useState(1);
   const [query, setQuery] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [isUploaded, setIsUploaded] = useState(false);
   const [uploadingMessage, setUploadingMessage] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
 
@@ -64,35 +65,6 @@ const Upload = ({ logout }) => {
     const formData = new FormData();
     formData.append("file", file);
 
-    // try {
-    //   setIsUploading(true);
-    //   setUploadingMessage("Uploading...");
-    //   cancelTokenSource = axios.CancelToken.source();
-
-    //   await axios.post(
-    //     `${import.meta.env.VITE_REACT_APP_URI}/api/v1/file/file-upload`,
-    //     formData,
-    //     {
-    //       headers: { "Content-Type": "multipart/form-data" },
-    //       cancelToken: cancelTokenSource.token,
-    //     }
-    //   );
-
-    //   toast.success("File uploaded successfully!");
-    //   setUploadingMessage("Processing uploaded data...");
-    //   await fetchData();
-    // } catch (err) {
-    //   if (axios.isCancel(err)) {
-    //     toast.warn("Upload cancelled.");
-    //   } else {
-    //     console.error("Upload failed:", err);
-    //     toast.error("Upload failed. Please try again.");
-    //   }
-    // } finally {
-    //   setIsUploading(false);
-    //   setUploadingMessage("");
-    //   cancelTokenSource = null;
-    // }
   };
 
   const handleCancelUpload = () => {
@@ -115,43 +87,54 @@ const Upload = ({ logout }) => {
     XLSX.writeFile(wb, "Title_Template.xlsx");
   };
 
-  const handleUpload = async () => {
-    if (!selectedFile) return;
 
-    const formData = new FormData();
-    formData.append("file", selectedFile);
+const handleUpload = async () => {
+  if (!selectedFile) return;
 
-    try {
-      setIsUploading(true);
-      setUploadingMessage("Uploading...");
-      cancelTokenSource = axios.CancelToken.source();
-      
-      await axios.post(
-        `${import.meta.env.VITE_REACT_APP_URI}/api/v1/file/file-upload`,
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-          cancelToken: cancelTokenSource.token,
-        }
-      );
+  const formData = new FormData();
+  formData.append("file", selectedFile);
 
-      toast.success("File uploaded successfully!");
-      setUploadingMessage("Processing uploaded data...");
-      await fetchData();
-      setSelectedFile(null); // reset after upload
-    } catch (err) {
-      if (axios.isCancel(err)) {
-        toast.warn("Upload cancelled.");
-      } else {
-        console.error("Upload failed:", err);
-        toast.error("Upload failed. Please try again.");
+  try {
+    setIsUploading(true);
+    setUploadingMessage("Uploading...");
+    cancelTokenSource = axios.CancelToken.source();
+
+    const uploadResponse = await axios.post(
+      `${import.meta.env.VITE_REACT_APP_URI}/api/v1/file/file-upload?page=${page}`,
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+        cancelToken: cancelTokenSource.token,
       }
-    } finally {
-      setIsUploading(false);
-      setUploadingMessage("");
-      cancelTokenSource = null;
+    );
+
+    console.log(uploadResponse);
+    
+
+    toast.success("File uploaded successfully!");
+    setUploadingMessage("Processing uploaded data...");
+
+    // Set uploaded file data only
+    // const newFileData = uploadResponse.data.response;
+    setFiles(uploadResponse.data.response);
+
+    setTotalPages(uploadResponse.data.total_page);
+    setIsUploaded(true); // trigger layout change
+    setSelectedFile(null);
+  } catch (err) {
+    if (axios.isCancel(err)) {
+      toast.warn("Upload cancelled.");
+    } else {
+      console.error("Upload failed:", err);
+      toast.error("Upload failed. Please try again.");
     }
-  };
+  } finally {
+    setIsUploading(false);
+    setUploadingMessage("");
+    cancelTokenSource = null;
+  }
+};
+
 
   const handleReset = () => {
     setSelectedFile(null);
@@ -203,9 +186,21 @@ const Upload = ({ logout }) => {
       </div>
 
       {/* Main content */}
-      <div className="p-6 flex flex-col lg:flex-row lg:items-start xl:flex-row xl:items-start gap-6 ">
-        {/* Upload Box */}
-  <div className="w-full sm:w-[90%] md:w-[80%] lg:w-[33%] xl:w-[28%] 2xl:w-[26%] mx-auto lg:mx-0 border-2 border-dashed border-gray-300 rounded-xl p-5 sm:p-6 text-center shadow-md bg-white">
+<div
+  className={`p-6 flex ${
+    isUploaded
+      ? "flex-row items-start gap-6 min-h-[calc(100vh-80px)]" // after upload: horizontal layout
+      : "flex-col items-center justify-center min-h-[calc(100vh-80px)]" // initially: centered vertically & horizontally
+  }`}
+>
+  {/* Upload Box */}
+  <div
+    className={`w-full ${
+      isUploaded
+        ? "lg:w-[33%] xl:w-[28%] 2xl:w-[26%]"
+        : "lg:w-[50%] xl:w-[40%] 2xl:w-[35%]"
+    } sm:w-[90%] md:w-[80%] border-2 border-dashed border-gray-300 rounded-xl p-5 sm:p-6 text-center shadow-md bg-white`}
+  >
           {isUploading ? (
             <div className="flex flex-col items-center gap-4 text-blue-600">
               <Loader className="animate-spin" size={32} />
@@ -273,25 +268,7 @@ const Upload = ({ logout }) => {
                 ⬇ Download Excel Template
               </button>
 
-              {/* <span
-                data-tooltip-id="templateInfo"
-                className="ml-2 cursor-pointer text-gray-500"
-              >
-                ℹ️
-              </span>
 
-              <Tooltip
-                id="templateInfo"
-                place="top"
-                effect="solid"
-                className="max-w-xs text-left"
-              >
-                The Excel template should contain the following columns: <br />
-                <strong>Title</strong>, <strong>Author_Mail</strong>,{" "}
-                <strong>Conference_Name</strong>, and{" "}
-                <strong>Decision_With_Comments</strong>.<br />
-                Fill them accordingly before uploading.
-              </Tooltip> */}
 
               <div>
                 <div className="text-left mt-4">
@@ -308,9 +285,11 @@ const Upload = ({ logout }) => {
           )}
         </div>
 
+
         {/* Table Section */}
-  <div className="w-full lg:w-[67%] xl:w-[72%] 2xl:w-[74%] bg-white rounded-2xl shadow-lg p-5 sm:p-6">
-          <input
+{isUploaded && (
+    <div className="w-full lg:w-[67%] xl:w-[72%] 2xl:w-[74%] bg-white rounded-2xl shadow-lg p-5 sm:p-6">
+            <input
             type="text"
             placeholder="Search by Title or Conference Name"
             value={query}
@@ -327,7 +306,7 @@ const Upload = ({ logout }) => {
       </tr>
     </thead>
 <tbody>
-  {files.length === 0 ? (
+  {!Array.isArray(files) || files.length === 0 ? (
     <tr>
       <td colSpan="3" className="text-center py-6 text-gray-500">
         No matching records found.
@@ -336,16 +315,15 @@ const Upload = ({ logout }) => {
   ) : (
     files.map((file, fileIndex) => (
       <React.Fragment key={fileIndex}>
-        {file.Conference?.length > 0 ? (
+        {Array.isArray(file?.Conference) && file.Conference.length > 0 ? (
           file.Conference.map((conf, i) => {
-            const decision = conf.Decision_With_Commends?.toLowerCase() || "";
+            const decision = (conf?.Decision_With_Commends || "").toLowerCase();
             let decisionClass = "text-yellow-600 font-semibold";
 
             if (decision.includes("accept")) decisionClass = "text-green-600 font-semibold";
             else if (decision.includes("reject")) decisionClass = "text-red-600 font-semibold";
             else if (decision.includes("revision")) decisionClass = "text-blue-600 font-semibold";
 
-            // Add bottom border only to the last row of the group
             const isLastRow = i === file.Conference.length - 1;
             const rowBorderClass = isLastRow ? "border-b-2 border-indigo-300" : "";
 
@@ -358,16 +336,16 @@ const Upload = ({ logout }) => {
                   <td
                     rowSpan={file.Conference.length}
                     className="py-4 px-5 align-top font-medium border-r-2 border-r-indigo-300"
-                    title={file.Title}
+                    title={file?.Title || ""}
                   >
-                    {highlightMatch(file.Title, query)}
+                    {highlightMatch ? highlightMatch(file.Title || "", query) : file.Title || ""}
                   </td>
                 )}
-                <td className="py-3 px-5" title={conf.Conference_Name}>
-                  {conf.Conference_Name?.trim() || <i>Unnamed Conference</i>}
+                <td className="py-3 px-5" title={conf?.Conference_Name || ""}>
+                  {conf?.Conference_Name?.trim() || <i>Unnamed Conference</i>}
                 </td>
                 <td className={`py-3 px-5 ${decisionClass}`}>
-                  {conf.Decision_With_Commends?.trim() || <i>-</i>}
+                  {conf?.Decision_With_Commends?.trim() || <i>-</i>}
                 </td>
               </tr>
             );
@@ -375,7 +353,7 @@ const Upload = ({ logout }) => {
         ) : (
           <tr className="hover:bg-indigo-50 transition duration-200 border-b-2 border-indigo-300">
             <td className="py-4 px-5 font-medium border-r">
-              {highlightMatch(file.Title, query)}
+              {highlightMatch ? highlightMatch(file?.Title || "", query) : file?.Title || ""}
             </td>
             <td className="py-3 px-5"><i>No Conference Data</i></td>
             <td className="py-3 px-5 text-yellow-600 font-semibold"><i>-</i></td>
@@ -385,6 +363,8 @@ const Upload = ({ logout }) => {
     ))
   )}
 </tbody>
+
+
 
   </table>
 </div>
@@ -424,7 +404,9 @@ const Upload = ({ logout }) => {
             </button>
           </div>
         </div>
+)}  
       </div>
+      
     </>
   );
 };
