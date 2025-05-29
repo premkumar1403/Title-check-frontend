@@ -354,12 +354,14 @@ const Upload = ({ logout }) => {
             <div className="overflow-x-auto shadow-xl rounded-xl border border-gray-200">
               <table className="min-w-full divide-y divide-gray-200 text-sm text-left">
                 <thead className="bg-gradient-to-r from-indigo-100 to-purple-100 sticky top-0 z-10 text-gray-700">
-                  <tr>
+                  <tr className="text-center">
                     <th className="py-3 px-5 font-semibold">Title</th>
                     <th className="py-3 px-5 font-semibold">Conference</th>
                     <th className="py-3 px-5 font-semibold">
-                      Decision With Commends
+                      Decision
                     </th>
+                    <th className="py-3 px-5 font-semibold">Precheck</th>
+                    <th className="py-3 px-5 font-semibold">Firstset</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -382,7 +384,7 @@ const Upload = ({ logout }) => {
                           file.Conference.map((conf, i) => {
                             const decision = (
                               conf?.Decision_With_Commends || ""
-                            ).toLowerCase();
+                            ).toUpperCase();
                             let decisionClass = "text-yellow-600 font-semibold";
 
                             if (decision.includes("accept"))
@@ -409,21 +411,40 @@ const Upload = ({ logout }) => {
                                     title={file?.Title || ""}
                                   >
                                     {highlightMatch
-                                      ? highlightMatch(file.Title || "", query)
+                                      ? highlightMatch(
+                                          file.Title.toUpperCase() || "",
+                                          query
+                                        )
                                       : file.Title || ""}
                                   </td>
                                 )}
                                 <td
-                                  className="py-3 px-5"
+                                  className="py-3 px-5 text-center border-r-2 border-r-indigo-300"
                                   title={conf?.Conference_Name || ""}
                                 >
-                                  {conf?.Conference_Name?.trim() || (
+                                  {conf?.Conference_Name?.trim().toUpperCase() || (
                                     <i>Unnamed Conference</i>
                                   )}
                                 </td>
-                                <td className={`py-3 px-5 ${decisionClass}`}>
-                                  {conf?.Decision_With_Commends?.trim() || (
+                                <td
+                                  className={`py-3 px-5 border-r-2 border-r-indigo-300 ${decisionClass}`}
+                                >
+                                  {conf?.Decision_With_Commends?.trim().toUpperCase() || (
                                     <i>-</i>
+                                  )}
+                                </td>
+                                <td className="py-3 px-5 border-r-2 border-r-indigo-300">
+                                  {conf?.Precheck_Commends?.trim() || (
+                                    <i className="flex justify-center text-2xl">
+                                      -
+                                    </i>
+                                  )}
+                                </td>
+                                <td className="py-3 px-5">
+                                  {conf?.Firstset_Commends?.trim() || (
+                                    <i className="flex justify-center text-2xl">
+                                      -
+                                    </i>
                                   )}
                                 </td>
                               </tr>
