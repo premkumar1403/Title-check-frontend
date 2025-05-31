@@ -20,7 +20,9 @@ const Register = () => {
   const usernameRegex = /^(?! )[A-Za-z\d]+(?: [A-Za-z\d]+)*(?<! )$/;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
-
+  const App_Base_URL =
+    import.meta.env.VITE_REACT_APP_NET_URI ||
+    import.meta.env.VITE_REACT_APP_LOCAL_URI;
   const validateField = (name, value) => {
     switch (name) {
       case "username":
@@ -57,7 +59,6 @@ const Register = () => {
     );
   };
 
-
 const handleSubmit = async (e) => {
   e.preventDefault();
 
@@ -67,7 +68,7 @@ const handleSubmit = async (e) => {
   }
 
   try {
-    const res = await axios.post(`${import.meta.env.VITE_REACT_APP_URI}/api/v1/users/signup`, {
+    const res = await axios.post(`${App_Base_URL}/api/v1/users/signup`, {
       username,
       email,
       password,

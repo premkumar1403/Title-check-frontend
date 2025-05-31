@@ -13,6 +13,9 @@ const Login = ({ login }) => {
   const [errors, setErrors] = useState({ email: "", password: "" });
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const Api_Base_Url =
+    import.meta.env.VITE_REACT_APP_NET_URI ||
+    import.meta.env.VITE_REACT_APP_LOCAL_URI;
 
   const validateField = (name, value) => {
     switch (name) {
@@ -37,7 +40,7 @@ const Login = ({ login }) => {
   const isFormValid = () => {
     return !errors.email && email && !errors.password && password;
   };
-
+ 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -48,7 +51,7 @@ const Login = ({ login }) => {
 
     try {
       const res = await axios.post(
-        `${import.meta.env.VITE_REACT_APP_URI}/api/v1/users/signin`,
+        `${Api_Base_Url}/api/v1/users/signin`,
         {
           email,
           password,
