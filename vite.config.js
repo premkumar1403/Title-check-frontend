@@ -8,6 +8,6 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: process.env.PORT || 5173,
-    allowedHosts:["https://title-frontend-backend.onrender.com"]
+    allowedHosts:["title-check-frontend.onrender.com"]
   },
 });
