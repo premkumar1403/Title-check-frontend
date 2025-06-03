@@ -27,7 +27,7 @@ const App = () => {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Login login={login} />} />
-          <Route path="/register" element={<Register />} />
+          {/* <Route path="/register" element={<Register />} /> */}
           <Route element={<ProtectedRoute isAuthenticated={isAuthenticated} />}>
             <Route path="/upload" element={<Upload logout={logout} />} />
           </Route>
