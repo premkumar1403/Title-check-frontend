@@ -278,7 +278,7 @@ const Upload = ({ logout }) => {
     if (!query) return text;
     const normalized_query = query
       .toLowerCase()
-      .replace(/[-'"/=.,:;]/g, " ")
+      .replace(/[-’'"/=.,:;]/g, " ")
       .replace(/\s+/g, " ")
       .trim();
     const regex = new RegExp(`(${normalized_query})`, "gi");
