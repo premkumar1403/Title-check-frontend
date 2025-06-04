@@ -6,7 +6,7 @@ import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { MdNavigateNext } from "react-icons/md";
 import { GrFormPrevious } from "react-icons/gr";
-
+import Template from './Template'
 let cancelTokenSource = null;
 
 const Upload = ({ logout }) => {
@@ -22,6 +22,7 @@ const Upload = ({ logout }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState("");
   const [modalTitle, setModalTitle] = useState("");
+  const [IsLoading, setIsLoading] = useState(false);
 
   const [validationPopupOpen, setValidationPopupOpen] = useState(false);
   const [validationErrors, setValidationErrors] = useState("");
@@ -47,7 +48,7 @@ const Upload = ({ logout }) => {
 
   const fetchUploadedFileData = async (currentPage = 1) => {
     if (!uploadedFileData) return;
-
+    setIsLoading(true);
     try {
       const res = await axios.post(
         `${
@@ -60,6 +61,7 @@ const Upload = ({ logout }) => {
       );
       setFiles(res.data.response);
       setTotalPages(res.data.total_page || 1);
+      setIsLoading(false);
     } catch (error) {
       console.error("Error fetching uploaded file data:", error);
       toast.error("Failed to fetch uploaded file data.");
@@ -108,66 +110,6 @@ const Upload = ({ logout }) => {
     }
   };
 
-  const handleDownloadTemplate = () => {
-    const ws = XLSX.utils.json_to_sheet([
-      {
-        Paper_ID: 1,
-        Title: "AI in Healthcare",
-        Author_Mail: "author1@example.com",
-        Conference_Name: "ICTMIM",
-        Decision_With_Commends: "Revision",
-        Precheck_Commends: "The Abstract must be between 150-200 words",
-        Firstset_Commends:
-          "The submitted manuscript appears to be entirely AI-generated, which undermines its originality and credibility. There is no evidence of original research, as the content lacks a clear research focus, methodology, and results. The references listed at the end of the article are not cited within the text.",
-      },
-      {
-        Paper_ID: 2,
-        Title: "Blockchain Security",
-        Author_Mail: "author2@example.com",
-        Conference_Name: "ICIMIA",
-        Decision_With_Commends: "Rejected",
-        Precheck_Commends: "The proposed research work is incomplete",
-        Firstset_Commends:
-          "Avoid using abbreviations in the article title. Instead, use full words to accurately convey the topic of the research, Some minor language mistakes should be revised (Avoid using Personal Pronouns).",
-      },
-      {
-        Paper_ID: 3,
-        Title: "Quantum Computing Advances",
-        Author_Mail: "author3@example.com",
-        Conference_Name: "ICSSAS",
-        Decision_With_Commends: "Accepted",
-        Precheck_Commends: "Entire Methodology section is written using AI",
-        Firstset_Commends:
-          "The article appears to contain significant portions of AI-generated text, which undermines its originality and credibility.The references listed at the end of the article are not cited within the text",
-      },
-      {
-        Paper_ID: 4,
-        Title: "Edge Computing for IoT",
-        Author_Mail: "author4@example.com",
-        Conference_Name: "ICDICI",
-        Decision_With_Commends: "WFD",
-        Precheck_Commends:
-          "The references cited in the article content does not match with the references cited at the end of an article",
-        Firstset_Commends:
-          "proposed methodology fig-1 is already exist - https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.sciencedirect.com%2Fscience%2Farticle%2Fpii%2FS0141933119304818&psig=AOvVaw27lho96Y3bUDY4JVdw6sNy&ust=1740294712788000&source=images&cd=vfe&opi=89978449&ved=0CBAQjRxqFwoTCOjs6dPd1osDFQAAAAAdAAAAABAE,Remove the AI generated Reference (21)",
-      },
-      {
-        Paper_ID: 5,
-        Title: "Ethics in AI",
-        Author_Mail: "author5@example.com",
-        Conference_Name: "ICICI",
-        Decision_With_Commends: "Pending WFC",
-        Precheck_Commends:
-          "It is suggested to organize the conclusion and future scope section much better. This section should be presented in one 250-300 word paragraph.",
-        Firstset_Commends:
-          "Expand the keywords. Some sections in the manuscript are AI generated. The resultant image 4 exists-October weather - Post-monsoon autumn 2025 - Guntur, India, provide reference or citation. Remove unnecessary hyphens.",
-      },
-    ]);
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template");
-    XLSX.writeFile(wb, "Title_Template.xlsx");
-  };
 
   const handleDownloadTableData = () => {
     if (!Array.isArray(files) || files.length === 0) {
@@ -183,18 +125,18 @@ const Upload = ({ logout }) => {
           exportData.push({
             Title: file.Title || "",
             Conference_Name: conf?.Conference_Name || "",
-            Decision_With_Commends: conf?.Decision_With_Commends || "",
-            Precheck_Commends: conf?.Precheck_Commends || "",
-            Firstset_Commends: conf?.Firstset_Commends || "",
+            Decision_With_Comments: conf?.Decision_With_Comments || "",
+            Precheck_Comments: conf?.Precheck_Comments || "",
+            Firstset_Comments: conf?.Firstset_Comments || "",
           });
         });
       } else {
         exportData.push({
           Title: file?.Title || "",
           Conference_Name: "No Conference Data",
-          Decision_With_Commends: "",
-          Precheck_Commends: "",
-          Firstset_Commends: "",
+          Decision_With_Comments: "",
+          Precheck_Comments: "",
+          Firstset_Comments: "",
         });
       }
     });
@@ -228,7 +170,7 @@ const Upload = ({ logout }) => {
         "Title",
         "Author_Mail",
         "Conference_Name",
-        "Decision_With_Commends",
+        "Decision_With_Comments",
       ];
 
       const invalidRows = [];
@@ -334,7 +276,12 @@ const Upload = ({ logout }) => {
 
   const highlightMatch = (text, query) => {
     if (!query) return text;
-    const regex = new RegExp(`(${query})`, "gi");
+    const normalized_query = query
+      .toLowerCase()
+      .replace(/[-'"/=.,:;]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const regex = new RegExp(`(${normalized_query})`, "gi");
     const parts = text.split(regex);
     return parts.map((part, idx) =>
       regex.test(part) ? (
@@ -495,14 +442,7 @@ const Upload = ({ logout }) => {
                   Reset
                 </button>
               </div>
-
-              <button
-                onClick={handleDownloadTemplate}
-                className="text-sm text-white cursor-pointer bg-green-500 px-3 mt-5 py-2 rounded hover:bg-green-600"
-              >
-                ⬇ Download Excel Template
-              </button>
-
+             <Template/>
               <div className="text-left mt-4">
                 <p className="font-bold text-amber-600">Note:</p>
                 <ul className="list-disc ml-5 mt-1 text-sm sm:text-base">
@@ -510,7 +450,7 @@ const Upload = ({ logout }) => {
                   <li>Follow the given template format.</li>
                   <li>
                     Ex: Title, Author_Mail, Conference_Name,
-                    Decision_With_Commends, Precheck_Commends, Firstset_Commends
+                    Decision_With_Comments, Precheck_Comments, Firstset_Comments
                   </li>
                   <li>All fields must be filled with valid data.</li>
                 </ul>
@@ -578,7 +518,20 @@ const Upload = ({ logout }) => {
                     </th>
                   </tr>
                 </thead>
-                <tbody>
+                {IsLoading ? (
+                  <tr>
+                    <td
+                      colSpan="5"
+                      className="text-center py-10 text-blue-600 font-medium">
+                      <div className="flex justify-center items-center gap-3 py-10">
+                        <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                        <span className="text-blue-600 font-medium">
+                          Loading page data...
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (<tbody>
                   {!Array.isArray(files) || files.length === 0 ? (
                     <tr>
                       <td
@@ -594,10 +547,10 @@ const Upload = ({ logout }) => {
                     files.map((file, fileIndex) => (
                       <React.Fragment key={fileIndex}>
                         {Array.isArray(file?.Conference) &&
-                        file.Conference.length > 0 ? (
+                          file.Conference.length > 0 ? (
                           file.Conference.map((conf, i) => {
                             const decision = (
-                              conf?.Decision_With_Commends || ""
+                              conf?.Decision_With_Comments || ""
                             ).toLowerCase();
                             let decisionClass = "text-yellow-600 font-semibold";
 
@@ -627,9 +580,9 @@ const Upload = ({ logout }) => {
                                     <div className="break-words">
                                       {highlightMatch
                                         ? highlightMatch(
-                                            file.Title?.toUpperCase() || "",
-                                            query
-                                          )
+                                          file.Title?.toUpperCase() || "",
+                                          query
+                                        )
                                         : file.Title || ""}
                                     </div>
                                   </td>
@@ -645,17 +598,17 @@ const Upload = ({ logout }) => {
                                   className={`py-3 px-4 text-center border-r-2 border-r-indigo-300 w-[15%] ${decisionClass}`}
                                 >
                                   <div className="break-words">
-                                    {conf?.Decision_With_Commends?.trim().toUpperCase() || (
+                                    {conf?.Decision_With_Comments?.trim().toUpperCase() || (
                                       <i>-</i>
                                     )}
                                   </div>
                                 </td>
                                 <td className="py-3 px-4 text-center border-r-2 border-r-indigo-300">
-                                  {conf?.Precheck_Commends?.trim() ? (
+                                  {conf?.Precheck_Comments?.trim() ? (
                                     <button
                                       onClick={() =>
                                         openModal(
-                                          conf.Precheck_Commends,
+                                          conf.Precheck_Comments,
                                           "Precheck Comments"
                                         )
                                       }
@@ -670,11 +623,11 @@ const Upload = ({ logout }) => {
                                   )}
                                 </td>
                                 <td className="py-3 px-4 text-center">
-                                  {conf?.Firstset_Commends?.trim() ? (
+                                  {conf?.Firstset_Comments?.trim() ? (
                                     <button
                                       onClick={() =>
                                         openModal(
-                                          conf.Firstset_Commends,
+                                          conf.Firstset_Comments,
                                           "Firstset Comments"
                                         )
                                       }
@@ -718,6 +671,7 @@ const Upload = ({ logout }) => {
                     ))
                   )}
                 </tbody>
+                )}
               </table>
             </div>
 
