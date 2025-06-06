@@ -29,19 +29,19 @@ const Upload = ({ logout }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [excludedConferenceNames, setExcludedConferenceNames] = useState([]);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [currentlyViewedItem, setCurrentlyViewedItem] = useState(null);
   const [downloadProgress, setDownloadProgress] = useState({
     current: 0,
     total: 0,
   });
   const [downloadCancelToken, setDownloadCancelToken] = useState(null);
   const createUniqueId = (file, conf, commentType, confIndex) => {
-    const baseId =
-      conf.id || `${file.Title}-${conf.Conference_Name}-${confIndex}`;
+    const baseId = conf.id || `${file.Title}-${conf.Conference_Name}-${confIndex}`;
     return `${baseId}-${commentType}`;
   };
-  const isVisited = (file, conf, commentType, confIndex) => {
+  const isCurrentlyViewed = (file, conf, commentType, confIndex) => {
     const uniqueId = createUniqueId(file, conf, commentType, confIndex);
-    return visitedItems.has(uniqueId);
+    return currentlyViewedItem === uniqueId;
   };
   const [currentModalItem, setCurrentModalItem] = useState({
     itemId: null,
@@ -609,8 +609,7 @@ const Upload = ({ logout }) => {
         const issueMessage = invalidRows
           .map(
             (row) =>
-              `Paper_ID - ${
-                row.rowNumber
+              `Paper_ID - ${row.rowNumber
               }: Missing fields - ${row.missingFields.join(", ")}`
           )
           .join("\n");
@@ -671,11 +670,11 @@ const Upload = ({ logout }) => {
     .map((file) => {
       const filteredConfs = Array.isArray(file.Conference)
         ? file.Conference.filter(
-            (conf) =>
-              !excludedConferenceNames.includes(
-                conf?.Conference_Name?.trim().toUpperCase()
-              )
-          )
+          (conf) =>
+            !excludedConferenceNames.includes(
+              conf?.Conference_Name?.trim().toUpperCase()
+            )
+        )
         : [];
       return { ...file, Conference: filteredConfs };
     })
@@ -685,11 +684,12 @@ const Upload = ({ logout }) => {
     setSelectedFile(null);
     setIsUploaded(false);
     setUploadedFileData(null);
-    setUploadedFileName(""); // Clear the uploaded filename
+    setUploadedFileName("");
     setFiles([]);
     setPage(1);
     setQuery("");
     setTotalPages(1);
+    setCurrentlyViewedItem(null); // Add this line
     document.getElementById("file").value = null;
   };
   const handleLogout = async () => {
@@ -738,9 +738,9 @@ const Upload = ({ logout }) => {
     });
     setIsModalOpen(true);
 
-    // Mark as visited when viewed with the unique identifier
+    // Set this item as currently viewed (replacing any previous one)
     const uniqueId = createUniqueId(file, conf, commentType, confIndex);
-    setVisitedItems((prev) => new Set([...prev, uniqueId]));
+    setCurrentlyViewedItem(uniqueId);
   };
 
   const closeModal = () => {
@@ -760,16 +760,21 @@ const Upload = ({ logout }) => {
       .writeText(text)
       .then(() => {
         toast.success("Text copied to clipboard!");
-        // Mark as visited when copied (if all parameters are provided)
+        // Set as currently viewed when copied (if all parameters are provided)
         if (file && conf && commentType !== null && confIndex !== null) {
           const uniqueId = createUniqueId(file, conf, commentType, confIndex);
-          setVisitedItems((prev) => new Set([...prev, uniqueId]));
+          setCurrentlyViewedItem(uniqueId);
         }
       })
       .catch(() => {
         toast.error("Failed to copy text.");
       });
   };
+
+  const clearCurrentView = () => {
+    setCurrentlyViewedItem(null);
+  };
+
 
   const Modal = () => {
     if (!isModalOpen) return null;
@@ -826,19 +831,17 @@ const Upload = ({ logout }) => {
 
       {/* Main content */}
       <div
-        className={`p-4 sm:p-6 flex flex-col ${
-          isUploaded
-            ? "lg:flex-row lg:items-start lg:gap-6 min-h-[calc(100vh-80px)]"
-            : "items-center justify-center min-h-[calc(100vh-80px)]"
-        }`}
+        className={`p-4 sm:p-6 flex flex-col ${isUploaded
+          ? "lg:flex-row lg:items-start lg:gap-6 min-h-[calc(100vh-80px)]"
+          : "items-center justify-center min-h-[calc(100vh-80px)]"
+          }`}
       >
         {/* Upload Box */}
         <div
-          className={`w-full ${
-            isUploaded
-              ? "lg:w-[33%] xl:w-[28%] 2xl:w-[26%]"
-              : "lg:w-[50%] xl:w-[40%] 2xl:w-[35%]"
-          } sm:w-[95%] border-2 border-dashed border-gray-300 rounded-xl p-4 sm:p-6 text-center mx-auto shadow-md bg-white`}
+          className={`w-full ${isUploaded
+            ? "lg:w-[33%] xl:w-[28%] 2xl:w-[26%]"
+            : "lg:w-[50%] xl:w-[40%] 2xl:w-[35%]"
+            } sm:w-[95%] border-2 border-dashed border-gray-300 rounded-xl p-4 sm:p-6 text-center mx-auto shadow-md bg-white`}
         >
           {isUploading ? (
             <div className="flex flex-col items-center gap-4 text-blue-600">
@@ -892,11 +895,10 @@ const Upload = ({ logout }) => {
                   <button
                     onClick={handleUpload}
                     disabled={!selectedFile}
-                    className={`px-3 py-2 rounded text-white flex items-center gap-2 text-sm ${
-                      selectedFile
-                        ? "bg-blue-600 hover:bg-blue-700 cursor-pointer"
-                        : "bg-blue-300 cursor-not-allowed"
-                    }`}
+                    className={`px-3 py-2 rounded text-white flex items-center gap-2 text-sm ${selectedFile
+                      ? "bg-blue-600 hover:bg-blue-700 cursor-pointer"
+                      : "bg-blue-300 cursor-not-allowed"
+                      }`}
                   >
                     Upload
                   </button>
@@ -951,11 +953,10 @@ const Upload = ({ logout }) => {
                 <button
                   onClick={handleRefresh}
                   disabled={isRefreshing}
-                  className={`px-3 py-2 rounded border transition-colors flex items-center justify-center ${
-                    isRefreshing
-                      ? "bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed"
-                      : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50 hover:text-gray-800 cursor-pointer"
-                  }`}
+                  className={`px-3 py-2 rounded border transition-colors flex items-center justify-center ${isRefreshing
+                    ? "bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed"
+                    : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50 hover:text-gray-800 cursor-pointer"
+                    }`}
                   title="Refresh current data"
                 >
                   <RefreshCw
@@ -966,28 +967,26 @@ const Upload = ({ logout }) => {
               </div>
               <div className="flex gap-2 justify-center items-center">
                 <span
-                  className={`text-sm px-2 py-3 rounded text-center ${
-                    query.trim()
-                      ? "text-orange-700 bg-orange-100"
-                      : isUploaded
+                  className={`text-sm px-2 py-3 rounded text-center ${query.trim()
+                    ? "text-orange-700 bg-orange-100"
+                    : isUploaded
                       ? "text-green-700 bg-green-100"
                       : "text-blue-700 bg-blue-100"
-                  }`}
+                    }`}
                 >
                   {query.trim()
                     ? "Database Search Results"
                     : isUploaded
-                    ? "Uploaded file Data"
-                    : "Database Records"}
+                      ? "Uploaded file Data"
+                      : "Database Records"}
                 </span>
                 <button
                   onClick={handleDownloadTableData}
                   disabled={isDownloading}
-                  className={`flex items-center gap-2 px-4 py-2 rounded transition-colors ${
-                    isDownloading
-                      ? "bg-blue-400 text-gray-200 cursor-not-allowed"
-                      : "bg-green-600 text-white hover:bg-green-700 cursor-pointer"
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded transition-colors ${isDownloading
+                    ? "bg-blue-400 text-gray-200 cursor-not-allowed"
+                    : "bg-green-600 text-white hover:bg-green-700 cursor-pointer"
+                    }`}
                 >
                   {isDownloading ? (
                     <>
@@ -1039,19 +1038,21 @@ const Upload = ({ logout }) => {
                   </tr>
                 </thead>
                 {IsLoading ? (
-                  <tr>
-                    <td
-                      colSpan="5"
-                      className="text-center py-10 text-blue-600 font-medium"
-                    >
-                      <div className="flex justify-center items-center gap-3 py-10">
-                        <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                        <span className="text-blue-600 font-medium">
-                          Loading page data...
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
+                  <tbody>
+                    <tr>
+                      <td
+                        colSpan="5"
+                        className="text-center py-10 text-blue-600 font-medium"
+                      >
+                        <div className="flex justify-center items-center gap-3 py-10">
+                          <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                          <span className="text-blue-600 font-medium">
+                            Loading page data...
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
                 ) : (
                   <tbody>
                     {!Array.isArray(files) || files.length === 0 ? (
@@ -1070,11 +1071,11 @@ const Upload = ({ logout }) => {
                         .map((file) => {
                           const filteredConfs = Array.isArray(file.Conference)
                             ? file.Conference.filter(
-                                (conf) =>
-                                  !excludedConferenceNames.includes(
-                                    conf?.Conference_Name?.trim().toUpperCase()
-                                  )
-                              )
+                              (conf) =>
+                                !excludedConferenceNames.includes(
+                                  conf?.Conference_Name?.trim().toUpperCase()
+                                )
+                            )
                             : [];
                           return { ...file, Conference: filteredConfs };
                         })
@@ -1115,9 +1116,9 @@ const Upload = ({ logout }) => {
                                       <div className="break-words">
                                         {highlightMatch
                                           ? highlightMatch(
-                                              file.Title?.toUpperCase() || "",
-                                              query
-                                            )
+                                            file.Title?.toUpperCase() || "",
+                                            query
+                                          )
                                           : file.Title || ""}
                                       </div>
                                     </td>
@@ -1151,36 +1152,18 @@ const Upload = ({ logout }) => {
                                             confIndex
                                           )
                                         }
-                                        className={`cursor-pointer flex items-center justify-center gap-1 px-3 py-1 rounded transition-colors mx-auto ${
-                                          isVisited(
-                                            file,
-                                            conf,
-                                            "precheck",
-                                            confIndex
-                                          )
-                                            ? "bg-gray-500 text-white hover:bg-gray-600"
-                                            : "bg-blue-500 text-white hover:bg-blue-600"
-                                        }`}
+                                        className={`cursor-pointer flex items-center justify-center gap-1 px-3 py-1 rounded transition-colors mx-auto ${isCurrentlyViewed(file, conf, "precheck", confIndex)
+                                          ? "bg-gray-500 text-white hover:bg-gray-600"
+                                          : "bg-blue-500 text-white hover:bg-blue-600"
+                                          }`}
                                         title={
-                                          isVisited(
-                                            file,
-                                            conf,
-                                            "precheck",
-                                            confIndex
-                                          )
-                                            ? "Already viewed - Click to view again"
+                                          isCurrentlyViewed(file, conf, "precheck", confIndex)
+                                            ? "Currently viewing - Click to view again"
                                             : "Click to view full comments"
                                         }
                                       >
                                         <Eye size={14} />
-                                        {isVisited(
-                                          file,
-                                          conf,
-                                          "precheck",
-                                          confIndex
-                                        )
-                                          ? "Viewed"
-                                          : "View"}
+                                        {isCurrentlyViewed(file, conf, "precheck", confIndex) ? "Viewed" : "View"}
                                       </button>
                                     ) : (
                                       <i>-</i>
@@ -1199,36 +1182,18 @@ const Upload = ({ logout }) => {
                                             confIndex
                                           )
                                         }
-                                        className={`cursor-pointer flex items-center justify-center gap-1 px-3 py-1 rounded transition-colors mx-auto ${
-                                          isVisited(
-                                            file,
-                                            conf,
-                                            "firstset",
-                                            confIndex
-                                          )
-                                            ? "bg-gray-500 text-white hover:bg-gray-600"
-                                            : "bg-purple-500 text-white hover:bg-purple-600"
-                                        }`}
+                                        className={`cursor-pointer flex items-center justify-center gap-1 px-3 py-1 rounded transition-colors mx-auto ${isCurrentlyViewed(file, conf, "firstset", confIndex)
+                                          ? "bg-gray-500 text-white hover:bg-gray-600"
+                                          : "bg-purple-500 text-white hover:bg-purple-600"
+                                          }`}
                                         title={
-                                          isVisited(
-                                            file,
-                                            conf,
-                                            "firstset",
-                                            confIndex
-                                          )
-                                            ? "Already viewed - Click to view again"
+                                          isCurrentlyViewed(file, conf, "firstset", confIndex)
+                                            ? "Currently viewing - Click to view again"
                                             : "Click to view full comments"
                                         }
                                       >
                                         <Eye size={14} />
-                                        {isVisited(
-                                          file,
-                                          conf,
-                                          "firstset",
-                                          confIndex
-                                        )
-                                          ? "Viewed"
-                                          : "View"}
+                                        {isCurrentlyViewed(file, conf, "firstset", confIndex) ? "Viewed" : "View"}
                                       </button>
                                     ) : (
                                       <i>-</i>
@@ -1251,11 +1216,10 @@ const Upload = ({ logout }) => {
                 onClick={() => setPage((p) => Math.max(p - 1, 1))}
                 disabled={page === 1}
                 className={`px-4 py-2 rounded-full border cursor-pointer transition font-medium flex items-center gap-2
-            ${
-              page === 1
-                ? "bg-blue-100 text-blue-400 border-blue-200 cursor-not-allowed"
-                : "bg-blue-500 text-white hover:bg-blue-600 border-blue-500 shadow-md"
-            }`}
+            ${page === 1
+                    ? "bg-blue-100 text-blue-400 border-blue-200 cursor-not-allowed"
+                    : "bg-blue-500 text-white hover:bg-blue-600 border-blue-500 shadow-md"
+                  }`}
               >
                 <GrFormPrevious className="text-xl" /> Prev
               </button>
@@ -1268,11 +1232,10 @@ const Upload = ({ logout }) => {
                 onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
                 disabled={page === totalPages}
                 className={`px-4 py-2 rounded-full border cursor-pointer transition font-medium flex items-center gap-2
-            ${
-              page === totalPages
-                ? "bg-blue-100 text-blue-400 border-blue-200 cursor-not-allowed"
-                : "bg-blue-500 text-white hover:bg-blue-600 border-blue-500 shadow-md"
-            }`}
+            ${page === totalPages
+                    ? "bg-blue-100 text-blue-400 border-blue-200 cursor-not-allowed"
+                    : "bg-blue-500 text-white hover:bg-blue-600 border-blue-500 shadow-md"
+                  }`}
               >
                 Next <MdNavigateNext className="text-xl" />
               </button>
