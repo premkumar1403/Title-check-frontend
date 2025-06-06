@@ -6,6 +6,7 @@ import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { MdNavigateNext } from "react-icons/md";
 import { GrFormPrevious } from "react-icons/gr";
+import { GrRefresh } from "react-icons/gr";
 import Template from './Template'
 let cancelTokenSource = null;
 
@@ -23,6 +24,7 @@ const Upload = ({ logout }) => {
   const [modalContent, setModalContent] = useState("");
   const [modalTitle, setModalTitle] = useState("");
   const [IsLoading, setIsLoading] = useState(false);
+  let Conference_Name = [];
 
   const [validationPopupOpen, setValidationPopupOpen] = useState(false);
   const [validationErrors, setValidationErrors] = useState("");
@@ -59,6 +61,7 @@ const Upload = ({ logout }) => {
           headers: { "Content-Type": "multipart/form-data" },
         }
       );
+      
       setFiles(res.data.response);
       setTotalPages(res.data.total_page || 1);
       setIsLoading(false);
@@ -166,6 +169,14 @@ const Upload = ({ logout }) => {
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" }); // defval makes sure empty cells return ""
 
+    //   const array = [];
+    //  console.log(array.push(jsonData))
+      for (let item of jsonData) {
+        Conference_Name.push({"Title": item.Title, "Conference_Name":item.Conference_Name});
+      }
+      console.log(Conference_Name);
+      
+      
       const requiredFields = [
         "Title",
         "Author_Mail",
@@ -225,11 +236,14 @@ const Upload = ({ logout }) => {
         formData: formData,
         response: uploadResponse.data.response,
       });
-
+      
+      console.log("daata:",uploadedFileData);
       setFiles(uploadResponse.data.response);
+    
+      
       setTotalPages(uploadResponse.data.total_page);
       setIsUploaded(true);
-      setSelectedFile(null);
+      // setSelectedFile(null);
       setPage(1);
       setQuery("");
       toast.success("File uploaded successfully!");
@@ -321,30 +335,31 @@ const Upload = ({ logout }) => {
     if (!isModalOpen) return null;
 
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg max-w-4xl w-full max-h-[80vh] overflow-hidden">
-          <div className="flex justify-between items-center p-4 border-b">
-            <h3 className="text-lg font-semibold text-gray-800">
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+        <div className="bg-white/80 backdrop-blur-md shadow-2xl rounded-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden border border-white/20 scale-95 animate-zoomIn transition-transform duration-300">
+          <div className="flex justify-between items-center p-5 border-b border-gray-300/40">
+            <h3 className="text-2xl font-bold text-gray-900 tracking-wide">
               {modalTitle}
             </h3>
             <div className="flex gap-4">
               <button
                 onClick={() => copyToClipboard(modalContent)}
-                className="flex items-center gap-1 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 hover:shadow-md active:scale-95 transition-all duration-200 cursor-pointer"
               >
-                <Copy size={16} />
+                <Copy size={13} />
                 Copy
               </button>
               <button
                 onClick={closeModal}
-                className="text-gray-500 hover:text-gray-700 text-3xl font-bold"
+                className="text-gray-600 hover:text-red-500 text-3xl font-bold cursor-pointer"
               >
                 ×
               </button>
             </div>
           </div>
-          <div className="p-4 overflow-y-auto max-h-[60vh]">
-            <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
+
+          <div className="p-5 overflow-y-auto max-h-[60vh] scrollbar-thin scrollbar-thumb-blue-400 scrollbar-track-blue-100 hover:scrollbar-thumb-blue-500">
+            <p className="text-gray-800 text-lg whitespace-pre-wrap leading-relaxed tracking-wide">
               {modalContent}
             </p>
           </div>
@@ -442,7 +457,7 @@ const Upload = ({ logout }) => {
                   Reset
                 </button>
               </div>
-             <Template/>
+              <Template />
               <div className="text-left mt-4">
                 <p className="font-bold text-amber-600">Note:</p>
                 <ul className="list-disc ml-5 mt-1 text-sm sm:text-base">
@@ -463,7 +478,7 @@ const Upload = ({ logout }) => {
         {isUploaded && (
           <div className="w-full lg:w-[67%] xl:w-[72%] 2xl:w-[74%] bg-white rounded-2xl shadow-lg p-4 sm:p-6 mt-6 lg:mt-0">
             {/* Search Section with Download Button */}
-            <div className="flex flex-col sm:flex-row justify-between items-stretch gap-3 mb-4">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-3 mb-4">
               <input
                 type="text"
                 placeholder="Search by Title or Conference Name"
@@ -474,6 +489,9 @@ const Upload = ({ logout }) => {
                 }}
                 className="border px-4 py-2 rounded w-full sm:flex-1"
               />
+              <button onClick={handleUpload}>
+                <GrRefresh className="text-2xl cursor-pointer"/>
+              </button>
               <div className="flex gap-2">
                 <button
                   onClick={handleDownloadTableData}
@@ -522,7 +540,8 @@ const Upload = ({ logout }) => {
                   <tr>
                     <td
                       colSpan="5"
-                      className="text-center py-10 text-blue-600 font-medium">
+                      className="text-center py-10 text-blue-600 font-medium"
+                    >
                       <div className="flex justify-center items-center gap-3 py-10">
                         <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                         <span className="text-blue-600 font-medium">
@@ -531,146 +550,224 @@ const Upload = ({ logout }) => {
                       </div>
                     </td>
                   </tr>
-                ) : (<tbody>
-                  {!Array.isArray(files) || files.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan="5"
-                        className="text-center py-6 text-gray-500"
-                      >
-                        {query.trim()
-                          ? "No matching records found in database."
-                          : "No records found."}
-                      </td>
-                    </tr>
-                  ) : (
-                    files.map((file, fileIndex) => (
-                      <React.Fragment key={fileIndex}>
-                        {Array.isArray(file?.Conference) &&
-                          file.Conference.length > 0 ? (
-                          file.Conference.map((conf, i) => {
-                            const decision = (
-                              conf?.Decision_With_Comments || ""
-                            ).toLowerCase();
-                            let decisionClass = "text-yellow-600 font-semibold";
+                ) : (
+                  <tbody>
+                    {!Array.isArray(files) || files.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan="5"
+                          className="text-center py-6 text-gray-500"
+                        >
+                          {query.trim()
+                            ? "No matching records found in database."
+                            : "No records found."}
+                        </td>
+                      </tr>
+                    ) : (
+                      (() => {
+                        const seenConferences = new Set();
 
-                            if (decision.includes("accept"))
-                              decisionClass = "text-green-600 font-semibold";
-                            else if (decision.includes("reject"))
-                              decisionClass = "text-red-600 font-semibold";
-                            else if (decision.includes("revision"))
-                              decisionClass = "text-blue-600 font-semibold";
+                        return files
+                          .map((file, fileIndex) => {
+                            // Filter out conferences we've already seen
+                            const uniqueConferences = [];
 
-                            const isLastRow = i === file.Conference.length - 1;
-                            const rowBorderClass = isLastRow
-                              ? "border-b-2 border-indigo-300"
-                              : "";
+                            if (
+                              Array.isArray(file?.Conference) &&
+                              file.Conference.length > 0
+                            ) {
+                              file.Conference.forEach((conf) => {
+                                const conferenceKey = (
+                                  conf?.Conference_Name || ""
+                                )
+                                  .toLowerCase()
+                                  .trim();
+                                if (!seenConferences.has(conferenceKey)) {
+                                  seenConferences.add(conferenceKey);
+                                  uniqueConferences.push(conf);
+                                }
+                              });
+                            }
+
+                            // If no unique conferences left after filtering, skip this file
+                            if (
+                              Array.isArray(file?.Conference) &&
+                              file.Conference.length > 0 &&
+                              uniqueConferences.length === 0
+                            ) {
+                              return null;
+                            }
+
+                            // Update the file object to only include unique conferences
+                            const filteredFile = {
+                              ...file,
+                              Conference:
+                                uniqueConferences.length > 0
+                                  ? uniqueConferences
+                                  : file.Conference,
+                            };
 
                             return (
-                              <tr
-                                key={i}
-                                className={`hover:bg-indigo-50 transition duration-200 even:bg-white odd:bg-gray-50 ${rowBorderClass}`}
-                              >
-                                {i === 0 && (
-                                  <td
-                                    rowSpan={file.Conference.length}
-                                    className="py-4 px-4 align-top font-medium border-r-2 border-r-indigo-300 w-[50%]"
-                                    title={file?.Title || ""}
-                                  >
-                                    <div className="break-words">
-                                      {highlightMatch
-                                        ? highlightMatch(
-                                          file.Title?.toUpperCase() || "",
-                                          query
-                                        )
-                                        : file.Title || ""}
-                                    </div>
-                                  </td>
-                                )}
-                                <td className="py-3 px-4 text-center border-r-2 border-r-indigo-300 w-[15%]">
-                                  <div className="break-words">
-                                    {conf?.Conference_Name?.trim().toUpperCase() || (
-                                      <i>Unnamed Conference</i>
-                                    )}
-                                  </div>
-                                </td>
-                                <td
-                                  className={`py-3 px-4 text-center border-r-2 border-r-indigo-300 w-[15%] ${decisionClass}`}
-                                >
-                                  <div className="break-words">
-                                    {conf?.Decision_With_Comments?.trim().toUpperCase() || (
+                              <React.Fragment key={fileIndex}>
+                                {Array.isArray(filteredFile?.Conference) &&
+                                filteredFile.Conference.length > 0 ? (
+                                  filteredFile.Conference.map((conf, i) => {
+                                    if (
+                                      Conference_Name.includes(
+                                        conf?.Conference_Name?.toLowerCase()?.trim()
+                                      )
+                                    ) {
+                                      return null; // Skip rendering this row
+                                    }
+                                    const decision = (
+                                      conf?.Decision_With_Comments || ""
+                                    ).toLowerCase();
+
+                                    let decisionClass =
+                                      "text-yellow-600 font-semibold";
+
+                                    if (decision.includes("accept"))
+                                      decisionClass =
+                                        "text-green-600 font-semibold";
+                                    else if (decision.includes("reject"))
+                                      decisionClass =
+                                        "text-red-600 font-semibold";
+                                    else if (decision.includes("revision"))
+                                      decisionClass =
+                                        "text-blue-600 font-semibold";
+
+                                    const isLastRow =
+                                      i === filteredFile.Conference.length - 1;
+                                    const rowBorderClass = isLastRow
+                                      ? "border-b-2 border-indigo-300"
+                                      : "";
+
+                                    return (
+                                      <tr
+                                        key={i}
+                                        className={`hover:bg-indigo-50 transition duration-200 even:bg-white odd:bg-gray-50 ${rowBorderClass}`}
+                                      >
+                                        {i === 0 && (
+                                          <td
+                                            rowSpan={
+                                              filteredFile.Conference.length
+                                            }
+                                            className="py-4 px-4 align-top font-medium border-r-2 border-r-indigo-300 w-[50%]"
+                                            title={filteredFile?.Title || ""}
+                                          >
+                                            <div className="break-words">
+                                              {highlightMatch
+                                                ? highlightMatch(
+                                                    filteredFile.Title?.toUpperCase() ||
+                                                      "",
+                                                    query
+                                                  )
+                                                : filteredFile.Title || ""}
+                                            </div>
+                                          </td>
+                                        )}
+                                        <td className="py-3 px-4 text-center border-r-2 border-r-indigo-300 w-[15%]">
+                                          <div className="break-words">
+                                            {Conference_Name.includes(
+                                              conf?.Conference_Name?.trim()
+                                            ) ? (
+                                              <i>
+                                                Hidden - Not in Existing
+                                                Conferences
+                                              </i>
+                                            ) : (
+                                              conf?.Conference_Name?.trim().toUpperCase()
+                                            )}
+                                          </div>
+                                        </td>
+
+                                        <td
+                                          className={`py-3 px-4 text-center border-r-2 border-r-indigo-300 w-[15%] ${decisionClass}`}
+                                        >
+                                          <div className="break-words">
+                                            {conf?.Decision_With_Comments &&
+                                            conf.Decision_With_Comments.trim() !==
+                                              "" ? (
+                                              conf.Decision_With_Comments.trim().toUpperCase()
+                                            ) : (
+                                              <i>-</i>
+                                            )}
+                                          </div>
+                                        </td>
+                                        <td className="py-3 px-4 text-center border-r-2 border-r-indigo-300">
+                                          {conf?.Precheck_Comments?.trim() ? (
+                                            <button
+                                              onClick={() =>
+                                                openModal(
+                                                  conf.Precheck_Comments,
+                                                  "Precheck Comments"
+                                                )
+                                              }
+                                              className="flex items-center justify-center gap-1 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors mx-auto"
+                                              title="Click to view full comments"
+                                            >
+                                              <Eye size={14} />
+                                              View
+                                            </button>
+                                          ) : (
+                                            <i>-</i>
+                                          )}
+                                        </td>
+                                        <td className="py-3 px-4 text-center">
+                                          {conf?.Firstset_Comments?.trim() ? (
+                                            <button
+                                              onClick={() =>
+                                                openModal(
+                                                  conf.Firstset_Comments,
+                                                  "Firstset Comments"
+                                                )
+                                              }
+                                              className="flex items-center justify-center gap-1 px-3 py-1 bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors mx-auto"
+                                              title="Click to view full comments"
+                                            >
+                                              <Eye size={14} />
+                                              View
+                                            </button>
+                                          ) : (
+                                            <i>-</i>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })
+                                ) : (
+                                  <tr className="hover:bg-indigo-50 transition duration-200 border-b-2 border-indigo-300">
+                                    <td className="py-4 px-4 font-medium border-r w-[30%]">
+                                      <div className="break-words">
+                                        {highlightMatch
+                                          ? highlightMatch(
+                                              filteredFile?.Title || "",
+                                              query
+                                            )
+                                          : filteredFile?.Title || ""}
+                                      </div>
+                                    </td>
+                                    <td className="py-3 px-4 text-center w-[15%]">
+                                      <i>No Conference Data</i>
+                                    </td>
+                                    <td className="py-3 px-4 text-center text-yellow-600 font-semibold w-[15%]">
                                       <i>-</i>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="py-3 px-4 text-center border-r-2 border-r-indigo-300">
-                                  {conf?.Precheck_Comments?.trim() ? (
-                                    <button
-                                      onClick={() =>
-                                        openModal(
-                                          conf.Precheck_Comments,
-                                          "Precheck Comments"
-                                        )
-                                      }
-                                      className="flex items-center justify-center gap-1 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors mx-auto"
-                                      title="Click to view full comments"
-                                    >
-                                      <Eye size={14} />
-                                      View
-                                    </button>
-                                  ) : (
-                                    <i>-</i>
-                                  )}
-                                </td>
-                                <td className="py-3 px-4 text-center">
-                                  {conf?.Firstset_Comments?.trim() ? (
-                                    <button
-                                      onClick={() =>
-                                        openModal(
-                                          conf.Firstset_Comments,
-                                          "Firstset Comments"
-                                        )
-                                      }
-                                      className="flex items-center justify-center gap-1 px-3 py-1 bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors mx-auto"
-                                      title="Click to view full comments"
-                                    >
-                                      <Eye size={14} />
-                                      View
-                                    </button>
-                                  ) : (
-                                    <i>-</i>
-                                  )}
-                                </td>
-                              </tr>
+                                    </td>
+                                    <td className="py-3 px-4 text-center w-[20%]">
+                                      <i>-</i>
+                                    </td>
+                                    <td className="py-3 px-4 text-center w-[20%]">
+                                      <i>-</i>
+                                    </td>
+                                  </tr>
+                                )}
+                              </React.Fragment>
                             );
                           })
-                        ) : (
-                          <tr className="hover:bg-indigo-50 transition duration-200 border-b-2 border-indigo-300">
-                            <td className="py-4 px-4 font-medium border-r w-[30%]">
-                              <div className="break-words">
-                                {highlightMatch
-                                  ? highlightMatch(file?.Title || "", query)
-                                  : file?.Title || ""}
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 text-center w-[15%]">
-                              <i>No Conference Data</i>
-                            </td>
-                            <td className="py-3 px-4 text-center text-yellow-600 font-semibold w-[15%]">
-                              <i>-</i>
-                            </td>
-                            <td className="py-3 px-4 text-center w-[20%]">
-                              <i>-</i>
-                            </td>
-                            <td className="py-3 px-4 text-center w-[20%]">
-                              <i>-</i>
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
-                    ))
-                  )}
-                </tbody>
+                          .filter(Boolean); // Remove null entries
+                      })()
+                    )}
+                  </tbody>
                 )}
               </table>
             </div>
