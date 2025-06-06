@@ -26,6 +26,13 @@ const Upload = ({ logout }) => {
   const [visitedItems, setVisitedItems] = useState(new Set());
   const [uploadedFileName, setUploadedFileName] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [excludedConferenceNames, setExcludedConferenceNames] = useState([]);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState({
+    current: 0,
+    total: 0,
+  });
+  const [downloadCancelToken, setDownloadCancelToken] = useState(null);
   const createUniqueId = (file, conf, commentType, confIndex) => {
     const baseId =
       conf.id || `${file.Title}-${conf.Conference_Name}-${confIndex}`;
@@ -133,7 +140,7 @@ const Upload = ({ logout }) => {
         "application/vnd.ms-excel",
       ].includes(file.type)
     ) {
-      toast.error("Only Excel files are allowed.");
+      toast.error("Only Excel file are allowed.");
       return;
     }
 
@@ -150,20 +157,29 @@ const Upload = ({ logout }) => {
 
   const handleDownloadTableData = async () => {
     try {
-      toast.info("Preparing download... This may take a moment.");
+      setIsDownloading(true);
+      setDownloadProgress({ current: 0, total: 0 });
+
+      // Create cancel token for download
+      const cancelToken = axios.CancelToken.source();
+      setDownloadCancelToken(cancelToken);
+
+      toast.info("Starting download preparation...", { autoClose: 1000 });
 
       let allData = [];
 
-      // Determine which data source to use and fetch all pages
+      // Always fetch from database/response data, never from uploaded file directly
       if (query.trim()) {
         // If there's a search query, fetch all search results from database
-        allData = await fetchAllSearchResults(query);
-      } else if (isUploaded && uploadedFileData) {
-        // If file is uploaded and no search, fetch all uploaded file data
-        allData = await fetchAllUploadedFileData();
+        allData = await fetchAllSearchResultsWithProgress(query, cancelToken);
       } else {
-        // If no upload and no search, fetch all database records
-        allData = await fetchAllDatabaseRecords();
+        // If no search query, fetch only the current response data (not uploaded file)
+        allData = files; // Use current files state which contains server response
+
+        // If we need all pages of response data, we can fetch them
+        if (totalPages > 1) {
+          allData = await fetchAllResponseDataWithProgress(cancelToken);
+        }
       }
 
       if (!Array.isArray(allData) || allData.length === 0) {
@@ -245,64 +261,40 @@ const Upload = ({ logout }) => {
         Firstset_Comments: group.Firstset_Comments.join(", "),
       }));
 
+      // Generate Excel file
       const ws = XLSX.utils.json_to_sheet(exportData);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Table Data");
+      XLSX.utils.book_append_sheet(wb, ws, "Response Data");
 
       const fileName = query.trim()
         ? `Search_Results_${new Date().toISOString().split("T")[0]}.xlsx`
-        : `Uploaded_Data_${new Date().toISOString().split("T")[0]}.xlsx`;
+        : `Response_Data_${new Date().toISOString().split("T")[0]}.xlsx`;
 
       XLSX.writeFile(wb, fileName);
       toast.success(
-        `Download completed! ${exportData.length} records exported.`
+        `Download completed! ${exportData.length} records exported successfully.`,
+        { autoClose: 5000 }
       );
     } catch (error) {
-      console.error("Download error:", error);
-      toast.error("Failed to download data. Please try again.");
-    }
-  };
-
-  // Fetch all search results from database (paginated)
-  const fetchAllSearchResults = async (searchTerm) => {
-    let allData = [];
-    let currentPage = 1;
-    let hasMore = true;
-
-    while (hasMore) {
-      try {
-        const res = await axios.get(
-          `${Api_Base_Url}/api/v1/file/file-get?q=${searchTerm}&page=${currentPage}`
-        );
-
-        const pageData = res.data.data || [];
-        const totalPages = res.data.total_page || 1;
-
-        if (pageData.length === 0 || currentPage > totalPages) {
-          hasMore = false;
-        } else {
-          allData = [...allData, ...pageData];
-          currentPage++;
-
-          if (currentPage > totalPages) {
-            hasMore = false;
-          }
-        }
-      } catch (error) {
-        console.error(
-          `Error fetching search results page ${currentPage}:`,
-          error
-        );
-        throw error;
+      if (axios.isCancel(error)) {
+        toast.warn("📥 Download cancelled by user.", { autoClose: 2000 });
+      } else {
+        console.error("Download error:", error);
+        toast.error("❌ Failed to download data. Please try again.");
       }
+    } finally {
+      setIsDownloading(false);
+      setDownloadProgress({ current: 0, total: 0 });
+      setDownloadCancelToken(null);
     }
-
-    return allData;
   };
 
-  // Fetch all uploaded file data (paginated)
-  const fetchAllUploadedFileData = async () => {
-    if (!uploadedFileData) return [];
+  // New function to fetch all response data (paginated)
+  const fetchAllResponseData = async () => {
+    if (!isUploaded || !uploadedFileData) {
+      // If not uploaded, fetch from database
+      return await fetchAllDatabaseRecords();
+    }
 
     let allData = [];
     let currentPage = 1;
@@ -329,7 +321,7 @@ const Upload = ({ logout }) => {
 
           // Update progress
           toast.info(
-            `Fetching uploaded data... Page ${currentPage - 1} of ${totalPages}`
+            `Fetching response data... Page ${currentPage - 1} of ${totalPages}`
           );
 
           if (currentPage > totalPages) {
@@ -338,7 +330,7 @@ const Upload = ({ logout }) => {
         }
       } catch (error) {
         console.error(
-          `Error fetching uploaded file data page ${currentPage}:`,
+          `Error fetching response data page ${currentPage}:`,
           error
         );
         throw error;
@@ -348,25 +340,34 @@ const Upload = ({ logout }) => {
     return allData;
   };
 
-  // Fetch all database records (paginated)
-  const fetchAllDatabaseRecords = async () => {
+  // Fetch all search results from database (paginated)
+  const fetchAllSearchResultsWithProgress = async (searchTerm, cancelToken) => {
     let allData = [];
     let currentPage = 1;
     let hasMore = true;
 
-    while (hasMore) {
+    // First, get total pages
+    const initialRes = await axios.get(
+      `${Api_Base_Url}/api/v1/file/file-get?q=${searchTerm}&page=1`,
+      { cancelToken: cancelToken.token }
+    );
+    const totalPages = initialRes.data.total_page || 1;
+    setDownloadProgress({ current: 0, total: totalPages });
+
+    while (hasMore && currentPage <= totalPages) {
       try {
         const res = await axios.get(
-          `${Api_Base_Url}/api/v1/file/file-get?q=&page=${currentPage}`
+          `${Api_Base_Url}/api/v1/file/file-get?q=${searchTerm}&page=${currentPage}`,
+          { cancelToken: cancelToken.token }
         );
 
         const pageData = res.data.data || [];
-        const totalPages = res.data.total_page || 1;
 
-        if (pageData.length === 0 || currentPage > totalPages) {
+        if (pageData.length === 0) {
           hasMore = false;
         } else {
           allData = [...allData, ...pageData];
+          setDownloadProgress({ current: currentPage, total: totalPages });
           currentPage++;
 
           if (currentPage > totalPages) {
@@ -374,6 +375,117 @@ const Upload = ({ logout }) => {
           }
         }
       } catch (error) {
+        if (axios.isCancel(error)) {
+          throw error; // Re-throw cancel errors
+        }
+        console.error(
+          `Error fetching search results page ${currentPage}:`,
+          error
+        );
+        throw error;
+      }
+    }
+
+    return allData;
+  };
+
+  const fetchAllResponseDataWithProgress = async (cancelToken) => {
+    if (!isUploaded || !uploadedFileData) {
+      return await fetchAllDatabaseRecordsWithProgress(cancelToken);
+    }
+
+    let allData = [];
+    let currentPage = 1;
+    let hasMore = true;
+
+    // First, get total pages
+    const initialRes = await axios.post(
+      `${Api_Base_Url}/api/v1/file/file-upload?page=1`,
+      uploadedFileData.formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+        cancelToken: cancelToken.token,
+      }
+    );
+    const totalPages = initialRes.data.total_page || 1;
+    setDownloadProgress({ current: 0, total: totalPages });
+
+    while (hasMore && currentPage <= totalPages) {
+      try {
+        const res = await axios.post(
+          `${Api_Base_Url}/api/v1/file/file-upload?page=${currentPage}`,
+          uploadedFileData.formData,
+          {
+            headers: { "Content-Type": "multipart/form-data" },
+            cancelToken: cancelToken.token,
+          }
+        );
+
+        const pageData = res.data.response || [];
+
+        if (pageData.length === 0) {
+          hasMore = false;
+        } else {
+          allData = [...allData, ...pageData];
+          setDownloadProgress({ current: currentPage, total: totalPages });
+          currentPage++;
+
+          if (currentPage > totalPages) {
+            hasMore = false;
+          }
+        }
+      } catch (error) {
+        if (axios.isCancel(error)) {
+          throw error; // Re-throw cancel errors
+        }
+        console.error(
+          `Error fetching response data page ${currentPage}:`,
+          error
+        );
+        throw error;
+      }
+    }
+
+    return allData;
+  };
+
+  const fetchAllDatabaseRecordsWithProgress = async (cancelToken) => {
+    let allData = [];
+    let currentPage = 1;
+    let hasMore = true;
+
+    // First, get total pages
+    const initialRes = await axios.get(
+      `${Api_Base_Url}/api/v1/file/file-get?q=&page=1`,
+      { cancelToken: cancelToken.token }
+    );
+    const totalPages = initialRes.data.total_page || 1;
+    setDownloadProgress({ current: 0, total: totalPages });
+
+    while (hasMore && currentPage <= totalPages) {
+      try {
+        const res = await axios.get(
+          `${Api_Base_Url}/api/v1/file/file-get?q=&page=${currentPage}`,
+          { cancelToken: cancelToken.token }
+        );
+
+        const pageData = res.data.data || [];
+
+        if (pageData.length === 0) {
+          hasMore = false;
+        } else {
+          allData = [...allData, ...pageData];
+          setDownloadProgress({ current: currentPage, total: totalPages });
+          currentPage++;
+
+          if (currentPage > totalPages) {
+            hasMore = false;
+          }
+        }
+      } catch (error) {
+        if (axios.isCancel(error)) {
+          throw error; // Re-throw cancel errors
+        }
         console.error(
           `Error fetching database records page ${currentPage}:`,
           error
@@ -383,6 +495,72 @@ const Upload = ({ logout }) => {
     }
 
     return allData;
+  };
+
+  // Cancel download function
+  const handleCancelDownload = () => {
+    if (downloadCancelToken) {
+      downloadCancelToken.cancel("Download cancelled by user.");
+    }
+  };
+
+  // Progress indicator component
+  const DownloadProgress = () => {
+    if (!isDownloading) return null;
+
+    const progressPercentage =
+      downloadProgress.total > 0
+        ? (downloadProgress.current / downloadProgress.total) * 100
+        : 0;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-2xl">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <Download className="animate-bounce" size={20} />
+              Preparing Download
+            </h3>
+            <button
+              onClick={handleCancelDownload}
+              className="text-gray-500 hover:text-red-500 text-2xl font-bold cursor-pointer transition-colors"
+              title="Cancel Download"
+            >
+              ×
+            </button>
+          </div>
+
+          {downloadProgress.total > 0 && (
+            <div className="mb-4">
+              <div className="flex justify-between text-sm text-gray-600 mb-2">
+                <span>Fetching data...</span>
+                <span>
+                  {downloadProgress.current} / {downloadProgress.total} pages
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-3">
+                <div
+                  className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${progressPercentage}%` }}
+                ></div>
+              </div>
+              <div className="text-center mt-2 text-sm font-medium text-gray-700">
+                {Math.round(progressPercentage)}% Complete
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-center">
+            <button
+              onClick={handleCancelDownload}
+              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors cursor-pointer"
+            >
+              Cancel Download
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const handleUpload = async () => {
@@ -397,6 +575,13 @@ const Upload = ({ logout }) => {
       const workbook = XLSX.read(data);
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+      const uniqueConferences = Array.from(
+        new Set(
+          jsonData.map((row) => row.Conference_Name?.trim().toUpperCase())
+        )
+      ).filter(Boolean);
+      setExcludedConferenceNames(uniqueConferences);
 
       const requiredFields = [
         "Title",
@@ -480,6 +665,20 @@ const Upload = ({ logout }) => {
       cancelTokenSource = null;
     }
   };
+
+  const filteredFiles = files
+    .map((file) => {
+      const filteredConfs = Array.isArray(file.Conference)
+        ? file.Conference.filter(
+            (conf) =>
+              !excludedConferenceNames.includes(
+                conf?.Conference_Name?.trim().toUpperCase()
+              )
+          )
+        : [];
+      return { ...file, Conference: filteredConfs };
+    })
+    .filter((file) => file.Conference.length > 0);
 
   const handleReset = () => {
     setSelectedFile(null);
@@ -661,9 +860,7 @@ const Upload = ({ logout }) => {
           ) : (
             <>
               <div className="text-4xl text-blue-500 mb-2">📤</div>
-              <p className="mb-1 font-semibold">
-                Choose Browse File from Device
-              </p>
+              <p className="mb-1 font-semibold">Browse File from Device</p>
               <input
                 type="file"
                 id="file"
@@ -676,7 +873,7 @@ const Upload = ({ logout }) => {
                 htmlFor="file"
                 className="cursor-pointer mt-2 inline-block text-blue-600 border border-blue-600 rounded px-4 py-1 hover:bg-blue-50"
               >
-                Browse Files
+                Browse File
               </label>
 
               {selectedFile && (
@@ -725,7 +922,7 @@ const Upload = ({ logout }) => {
                   <div className="text-left mt-4">
                     <p className="font-bold text-amber-600">Note:</p>
                     <ul className="list-disc ml-5 mt-1 text-sm sm:text-base">
-                      <li>Upload only XLSX or XLS files.</li>
+                      <li>Upload only XLSX or XLS file.</li>
                       <li>Follow the given template format.</li>
                       <li>
                         Ex: Title, Author_Mail, Conference_Name,
@@ -778,19 +975,39 @@ const Upload = ({ logout }) => {
                   className={`text-sm px-2 py-3 rounded text-center ${
                     query.trim()
                       ? "text-orange-700 bg-orange-100"
+                      : isUploaded
+                      ? "text-green-700 bg-green-100"
                       : "text-blue-700 bg-blue-100"
                   }`}
                 >
                   {query.trim()
                     ? "Database Search Results"
-                    : "Uploaded File Data"}
+                    : isUploaded
+                    ? "Uploaded file Data"
+                    : "Database Records"}
                 </span>
                 <button
                   onClick={handleDownloadTableData}
-                  className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                  disabled={isDownloading}
+                  className={`flex items-center gap-2 px-4 py-2 rounded transition-colors ${
+                    isDownloading
+                      ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+                      : "bg-green-600 text-white hover:bg-green-700 cursor-pointer"
+                  }`}
                 >
-                  <Download size={16} />
-                  <span className="hidden sm:inline">Export Excel</span>
+                  {isDownloading ? (
+                    <>
+                      <Loader className="animate-spin" size={16} />
+                      <span className="hidden sm:inline">Preparing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download size={16} />
+                      <span className="hidden sm:inline">
+                        {query.trim() ? "Export Search" : "Export Response"}
+                      </span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -845,11 +1062,22 @@ const Upload = ({ logout }) => {
                         </td>
                       </tr>
                     ) : (
-                      files.map((file, fileIndex) => (
-                        <React.Fragment key={fileIndex}>
-                          {Array.isArray(file?.Conference) &&
-                          file.Conference.length > 0 ? (
-                            file.Conference.map((conf, confIndex) => {
+                      files
+                        .map((file) => {
+                          const filteredConfs = Array.isArray(file.Conference)
+                            ? file.Conference.filter(
+                                (conf) =>
+                                  !excludedConferenceNames.includes(
+                                    conf?.Conference_Name?.trim().toUpperCase()
+                                  )
+                              )
+                            : [];
+                          return { ...file, Conference: filteredConfs };
+                        })
+                        .filter((file) => file.Conference.length > 0)
+                        .map((file, fileIndex) => (
+                          <React.Fragment key={fileIndex}>
+                            {file.Conference.map((conf, confIndex) => {
                               const decision = (
                                 conf?.Decision_With_Comments || ""
                               ).toLowerCase();
@@ -1004,32 +1232,9 @@ const Upload = ({ logout }) => {
                                   </td>
                                 </tr>
                               );
-                            })
-                          ) : (
-                            <tr className="hover:bg-indigo-50 transition duration-200 border-b-2 border-indigo-300">
-                              <td className="py-4 px-4 font-medium border-r w-[30%]">
-                                <div className="break-words">
-                                  {highlightMatch
-                                    ? highlightMatch(file?.Title || "", query)
-                                    : file?.Title || ""}
-                                </div>
-                              </td>
-                              <td className="py-3 px-4 text-center w-[15%]">
-                                <i>No Conference Data</i>
-                              </td>
-                              <td className="py-3 px-4 text-center text-yellow-600 font-semibold w-[15%]">
-                                <i>-</i>
-                              </td>
-                              <td className="py-3 px-4 text-center w-[20%]">
-                                <i>-</i>
-                              </td>
-                              <td className="py-3 px-4 text-center w-[20%]">
-                                <i>-</i>
-                              </td>
-                            </tr>
-                          )}
-                        </React.Fragment>
-                      ))
+                            })}
+                          </React.Fragment>
+                        ))
                     )}
                   </tbody>
                 )}
