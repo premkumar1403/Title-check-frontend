@@ -83,11 +83,11 @@ const Login = ({ login }) => {
       <div className="md:w-1/2 w-full bg-blue-500 flex flex-col justify-center items-center text-white p-10 text-center">
         <h1 className="text-4xl md:text-5xl font-bold mb-4">Welcome Back!</h1>
         <p className="text-lg font-semibold mb-6">Login to your account.</p>
-        <Link to={"/register"}>
+        {/* <Link to={"/register"}>
           <button className="border border-white px-6 py-2 rounded-full hover:bg-white hover:text-blue-500 transition cursor-pointer">
             Sign Up
           </button>
-        </Link>
+        </Link> */}
       </div>
 
       {/* Right Panel - Login Form */}
