@@ -1,21 +1,19 @@
-import React, { useState } from "react";
+import { useState,useEffect } from "react";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { Link, useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
-import axios from "axios";
+import useAuthStore from "../store/useAuthStore";
 
-const Login = ({ login }) => {
+
+const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({ email: "", password: "" });
-
+  const { signin } = useAuthStore();
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const Api_Base_Url =
-    import.meta.env.VITE_REACT_APP_NET_URI ||
-    import.meta.env.VITE_REACT_APP_LOCAL_URI;
 
   const validateField = (name, value) => {
     switch (name) {
@@ -30,6 +28,20 @@ const Login = ({ login }) => {
     }
   };
 
+
+// Quick checks you can use anywhere
+const hasToken = !!window.localStorage.getItem('token');
+const hasAnyAuth = !!(localStorage.getItem('token') || document.cookie.includes('token'));
+
+// In your component
+useEffect(() => {
+    if (window.localStorage.getItem('token')) {
+        navigate('/upload');
+    }
+}, []);
+
+
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (name === "email") setEmail(value);
@@ -40,7 +52,7 @@ const Login = ({ login }) => {
   const isFormValid = () => {
     return !errors.email && email && !errors.password && password;
   };
- 
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -48,33 +60,12 @@ const Login = ({ login }) => {
       toast.error("Please enter valid credentials.");
       return;
     }
+    await signin(email, password);
+    navigate("/upload", { replace: true });
+    setEmail("");
+    setPassword("");
+    setErrors({ email: "", password: "" });
 
-    try {
-      const res = await axios.post(
-        `${Api_Base_Url}/api/v1/users/signin`,
-        {
-          email,
-          password,
-        },
-        {
-          withCredentials: true,
-        }
-      );
-      if (res) {
-        login(email, password);
-        localStorage.setItem("isAuthenticated","true")
-        toast.success("Logged in successfully!");
-        navigate("/upload", { replace: true });
-        setEmail("");
-        setPassword("");
-        setErrors({ email: "", password: "" });
-      } else {
-        toast.error(res.data.message || "Login failed!");
-      }
-    } catch (error) {
-      console.error("Login Error:", error);
-      toast.error(error.response?.data?.message || "Server Error");
-    }
   };
 
   return (
@@ -106,13 +97,12 @@ const Login = ({ login }) => {
               type="text"
               value={email}
               onChange={handleChange}
-              className={`w-full px-4 py-2 rounded border ${
-                errors.email
+              className={`w-full px-4 py-2 rounded border ${errors.email
                   ? "border-red-500"
                   : email
-                  ? "border-green-500"
-                  : "border-gray-300"
-              } focus:outline-none`}
+                    ? "border-green-500"
+                    : "border-gray-300"
+                } focus:outline-none`}
             />
             {errors.email && (
               <p className="text-sm text-red-600 mt-1">{errors.email}</p>
@@ -130,13 +120,12 @@ const Login = ({ login }) => {
               type={showPassword ? "text" : "password"}
               value={password}
               onChange={handleChange}
-              className={`w-full px-4 py-2 rounded border ${
-                errors.password
+              className={`w-full px-4 py-2 rounded border ${errors.password
                   ? "border-red-500"
                   : password
-                  ? "border-green-500"
-                  : "border-gray-300"
-              } focus:outline-none`}
+                    ? "border-green-500"
+                    : "border-gray-300"
+                } focus:outline-none`}
             />
             <button
               type="button"

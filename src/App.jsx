@@ -8,19 +8,16 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./components/NotFound";
 
 const App = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(
-    localStorage.getItem("isAuthenticated") === "true"
-  );
-
-  const login = () => {
+   const login=() => {
     localStorage.setItem("isAuthenticated", "true");
-    setIsAuthenticated(true);
-  };
+    set({ isAuthenticated: true });
+  }
 
-  const logout = () => {
+  const logout= () => {
     localStorage.removeItem("isAuthenticated");
-    setIsAuthenticated(true);
-  };
+    localStorage.removeItem("token");
+    set({ isAuthenticated: false, user: null });
+  }
   return (
     <>
       <ToastContainer position="top-right" autoClose={3000} />
@@ -28,8 +25,8 @@ const App = () => {
         <Routes>
           <Route path="/" element={<Login login={login} />} />
           {/* <Route path="/register" element={<Register />} /> */}
-          <Route element={<ProtectedRoute isAuthenticated={isAuthenticated} />}>
-            <Route path="/upload" element={<Upload logout={logout} />} />
+          <Route element={<ProtectedRoute/>}>
+            <Route path="/upload" element={<Upload logout={logout}/>}/>
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

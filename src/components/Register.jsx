@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
-import axios from "axios";
+import useAuthStore from "../store/useAuthStore";
+
 
 const Register = () => {
   const [username, setUsername] = useState("");
@@ -16,6 +17,7 @@ const Register = () => {
     password: "",
   });
   const navigate = useNavigate();
+  const {signup}= useAuthStore();
   
   const usernameRegex = /^(?! )[A-Za-z\d]+(?: [A-Za-z\d]+)*(?<! )$/;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -61,33 +63,18 @@ const Register = () => {
 
 const handleSubmit = async (e) => {
   e.preventDefault();
-
   if (!isFormValid()) {
     toast.error("Please fill all the required fields correctly.");
     return;
   }
-
   try {
-    const res = await axios.post(`${App_Base_URL}/api/v1/users/signup`, {
-      username,
-      email,
-      password,
-    });
-
-    if (res) {
-      toast.success("Account created successfully!");
-      setTimeout(() => {
-        navigate("/");
-      },3000);
-      // Clear form
+      setErrors({ username: "", email: "", password: "" });
+      await signup(username,email,password,navigate);
       setUsername("");
       setEmail("");
       setPassword("");
-      setErrors({ username: "", email: "", password: "" });
-    } else {
-      toast.error(res.data.message || "Something went wrong!");
-    }
-  } catch (error) {
+     } 
+  catch (error) {
     console.error("Registration Error:", error);
     toast.error(error.response?.data?.message || "Server Error");
   }
