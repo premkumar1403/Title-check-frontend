@@ -21,7 +21,8 @@ const useFileStore = create((set, get) => ({
   downloadProgress: { current: 0, total: 0 },
   downloadCancelToken: null,
   validationErrors: '',
-  
+  selectCmd: null,
+ 
   // Cancel tokens
   cancelTokenSource: null,
 
@@ -43,12 +44,11 @@ const useFileStore = create((set, get) => ({
   setDownloadProgress: (downloadProgress) => set({ downloadProgress }),
   setDownloadCancelToken: (downloadCancelToken) => set({ downloadCancelToken }),
   setValidationErrors: (validationErrors) => set({ validationErrors }),
-
+  setselectCmd: (selectCmd) => set({ selectCmd }),
   // API Base URL
   getApiBaseUrl: () => {
     return import.meta.env.VITE_REACT_APP_NET_URI || import.meta.env.VITE_REACT_APP_LOCAL_URI;
   },
-
   // Get auth headers
   getAuthHeaders: () => ({
     Authorization: `Bearer ${localStorage.getItem('token')}`,

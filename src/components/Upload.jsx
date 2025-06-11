@@ -130,6 +130,11 @@ const Upload = () => {
     }
   };
 
+  const handleChange = async(e)=>{
+    const [...name] = e.target.name;
+    const [...value] = e.target.value;
+  }
+
   const handleReset = () => {
     resetUpload();
     setCurrentlyViewedItem(null);

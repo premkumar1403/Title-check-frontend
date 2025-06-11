@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { Eye } from 'lucide-react';
 
 const DataTable = ({
@@ -8,21 +8,82 @@ const DataTable = ({
   isLoading,
   onOpenModal,
   isCurrentlyViewed,
-  highlightMatch
+  highlightMatch,
 }) => {
-  const filteredFiles = files
-    .map((file) => {
-      const filteredConfs = Array.isArray(file.Conference)
-        ? file.Conference.filter(
-            (conf) =>
-              !excludedConferenceNames.includes(
-                conf?.Conference_Name?.trim().toUpperCase()
-              )
-          )
-        : [];
-      return { ...file, Conference: filteredConfs };
-    })
-    .filter((file) => file.Conference.length > 0);
+  // State for filters
+  const [selectedConference, setSelectedConference] = useState('');
+  const [selectedDecision, setSelectedDecision] = useState('');
+
+  // Get unique conference names from all files
+  const uniqueConferences = useMemo(() => {
+    const conferenceSet = new Set();
+    
+    files.forEach(file => {
+      if (Array.isArray(file.Conference)) {
+        file.Conference.forEach(conf => {
+          const confName = conf?.Conference_Name?.trim().toUpperCase();
+          if (confName && !excludedConferenceNames.includes(confName)) {
+            conferenceSet.add(confName);
+          }
+        });
+      }
+    });
+    
+    return Array.from(conferenceSet).sort();
+  }, [files, excludedConferenceNames]);
+
+  // Decision options
+  const decisionOptions = ['Accept', 'Reject', 'Revision', 'Pending'];
+
+  // Filter files based on selected filters
+  const filteredFiles = useMemo(() => {
+    return files
+      .map((file) => {
+        const filteredConfs = Array.isArray(file.Conference)
+          ? file.Conference.filter((conf) => {
+              // Filter out excluded conferences
+              const confName = conf?.Conference_Name?.trim().toUpperCase();
+              if (excludedConferenceNames.includes(confName)) {
+                return false;
+              }
+
+              // Apply conference filter
+              if (selectedConference && confName !== selectedConference) {
+                return false;
+              }
+
+              // Apply decision filter
+              if (selectedDecision) {
+                const decision = (conf?.Decision_With_Comments || '').toLowerCase();
+                const filterDecision = selectedDecision.toLowerCase();
+                
+                if (filterDecision === 'accept' && !decision.includes('accept')) {
+                  return false;
+                }
+                if (filterDecision === 'reject' && !decision.includes('reject')) {
+                  return false;
+                }
+                if (filterDecision === 'revision' && !decision.includes('revision')) {
+                  return false;
+                }
+                if (filterDecision === 'pending' && (decision.includes('accept') || decision.includes('reject') || decision.includes('revision'))) {
+                  return false;
+                }
+              }
+
+              return true;
+            })
+          : [];
+        return { ...file, Conference: filteredConfs };
+      })
+      .filter((file) => file.Conference.length > 0);
+  }, [files, excludedConferenceNames, selectedConference, selectedDecision]);
+
+  // Reset filters
+  const resetFilters = () => {
+    setSelectedConference('');
+    setSelectedDecision('');
+  };
 
   return (
     <div className="overflow-auto max-w-full shadow-xl rounded-xl border border-gray-200">
@@ -33,10 +94,38 @@ const DataTable = ({
               Title
             </th>
             <th className="py-3 px-4 font-semibold text-center w-[10%]">
-              Conference
+              <div className="flex flex-col gap-2">
+                <span>Conference</span>
+                <select
+                  value={selectedConference}
+                  onChange={(e) => setSelectedConference(e.target.value)}
+                  className="text-xs border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">All Conferences</option>
+                  {uniqueConferences.map((conf) => (
+                    <option key={conf} value={conf}>
+                      {conf}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </th>
             <th className="py-3 px-4 font-semibold text-center w-[10%]">
-              Decision
+              <div className="flex flex-col gap-2">
+                <span>Decision</span>
+                <select
+                  value={selectedDecision}
+                  onChange={(e) => setSelectedDecision(e.target.value)}
+                  className="text-xs border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">All Decisions</option>
+                  {decisionOptions.map((decision) => (
+                    <option key={decision} value={decision}>
+                      {decision}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </th>
             <th className="py-3 px-4 font-semibold text-center w-[10%]">
               Precheck
@@ -45,6 +134,33 @@ const DataTable = ({
               Firstset
             </th>
           </tr>
+          {(selectedConference || selectedDecision) && (
+            <tr>
+              <td colSpan="5" className="px-4 py-2 bg-blue-50 border-t">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs text-blue-700">
+                    <span>Active filters:</span>
+                    {selectedConference && (
+                      <span className="bg-blue-200 px-2 py-1 rounded">
+                        Conference: {selectedConference}
+                      </span>
+                    )}
+                    {selectedDecision && (
+                      <span className="bg-blue-200 px-2 py-1 rounded">
+                        Decision: {selectedDecision}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={resetFilters}
+                    className="text-xs text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Clear filters
+                  </button>
+                </div>
+              </td>
+            </tr>
+          )}
         </thead>
         {isLoading ? (
           <tbody>
@@ -70,8 +186,8 @@ const DataTable = ({
                   colSpan="5"
                   className="text-center py-6 text-gray-500"
                 >
-                  {query.trim()
-                    ? "No matching records found in database."
+                  {query.trim() || selectedConference || selectedDecision
+                    ? "No matching records found with current filters."
                     : "No records found."}
                 </td>
               </tr>
