@@ -82,7 +82,7 @@ const Upload = () => {
     return () => clearTimeout(delayDebounce);
   }, [query, page, isUploaded, uploadedFileData, isAuthenticated, fetchData, fetchUploadedFileData, logout, navigate]);
 
-  // Show validation popup when there are validation errors
+
   useEffect(() => {
     if (validationErrors) {
       setValidationPopupOpen(true);

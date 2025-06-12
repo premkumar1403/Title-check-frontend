@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Eye } from 'lucide-react';
-
+import axios from 'axios'
 const DataTable = ({
   files,
   excludedConferenceNames,
@@ -9,6 +9,7 @@ const DataTable = ({
   onOpenModal,
   isCurrentlyViewed,
   highlightMatch,
+  selectedFile
 }) => {
   // State for filters
   const [selectedConference, setSelectedConference] = useState('');
@@ -84,6 +85,19 @@ const DataTable = ({
     setSelectedConference('');
     setSelectedDecision('');
   };
+
+  const [allData,setallData]=useState('')
+;
+
+// useEffect(()=>{
+//    const  fetchData=async()=>{
+//     const response = await axios.get("http://localhost:5000/api/v1/file/get-all");
+//     setallData(response);
+//   }
+//   fetchData();
+// },[])
+
+
 
   return (
     <div className="overflow-auto max-w-full shadow-xl rounded-xl border border-gray-200">
