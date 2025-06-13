@@ -164,7 +164,7 @@ const useFileStore = create((set, get) => ({
         'Decision_With_Comments',
       ];
 
-    //   const allowedDecisions = ["accepted", "revision sent", "rejected", "registered", "sent back to author", "precheck", "1st comments pending", "2nd comments pending", "withdraw"];
+      const allowedDecisions = ["accepted", "revision sent", "rejected", "registered", "sent back to author", "precheck", "1st comments pending", "2nd comments pending", "withdraw"];
       const invalidRows = [];
 
       jsonData.forEach((row, index) => {
@@ -176,25 +176,25 @@ const useFileStore = create((set, get) => ({
         .replace(/[-''"/=.,:;]/g, " ")
         .replace(/\s+/g, " ")
         .trim();
-        // const hasInvalidDecision = row.Decision_With_Comments && 
-        //   !allowedDecisions.includes(decisionValue);
+        const hasInvalidDecision = row.Decision_With_Comments && 
+          !allowedDecisions.includes(decisionValue);
 
-        // if (missing.length > 0 || hasInvalidDecision) {
-        //   const issues = [];
+        if (missing.length > 0 || hasInvalidDecision) {
+          const issues = [];
           
-        //   if (missing.length > 0) {
-        //     issues.push(`Missing fields: ${missing.join(', ')}`);
-        //   }
+          if (missing.length > 0) {
+            issues.push(`Missing fields: ${missing.join(', ')}`);
+          }
           
-        //   if (hasInvalidDecision) {
-        //     issues.push(`Invalid Decision_With_Comments value: "${row.Decision_With_Comments}". Allowed values are: ${allowedDecisions.join(', ')}`);
-        //   }
+          if (hasInvalidDecision) {
+            issues.push(`Invalid Decision_With_Comments value: "${row.Decision_With_Comments}". Allowed values are: ${allowedDecisions.join(', ')}`);
+          }
           
-        //   invalidRows.push({
-        //     rowNumber: index + 2,
-        //     issues: issues,
-        //   });
-        // }
+          invalidRows.push({
+            rowNumber: index + 2,
+            issues: issues,
+          });
+        }
       });
 
       if (invalidRows.length > 0) {

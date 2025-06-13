@@ -110,7 +110,7 @@ const DataTable = ({
             <th className="py-3 px-4 font-semibold text-center w-[10%]">
               <div className="flex flex-col gap-2">
                 <span>Conference</span>
-                <select
+                {/* <select
                   value={selectedConference}
                   onChange={(e) => setSelectedConference(e.target.value)}
                   className="text-xs border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -121,13 +121,13 @@ const DataTable = ({
                       {conf}
                     </option>
                   ))}
-                </select>
+                </select> */}
               </div>
             </th>
             <th className="py-3 px-4 font-semibold text-center w-[10%]">
               <div className="flex flex-col gap-2">
                 <span>Decision</span>
-                <select
+                {/* <select
                   value={selectedDecision}
                   onChange={(e) => setSelectedDecision(e.target.value)}
                   className="text-xs border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -138,7 +138,7 @@ const DataTable = ({
                       {decision}
                     </option>
                   ))}
-                </select>
+                </select> */}
               </div>
             </th>
             <th className="py-3 px-4 font-semibold text-center w-[10%]">
